@@ -159,10 +159,10 @@ launcher (it works even when Windows PowerShell script execution is disabled):
 For normal Windows use, double-click `DeepFaceLab-GUI.cmd`. The native control
 panel can select a workspace and saved model, build or verify the runtime, start
 and gracefully stop training, follow logs, and display live RTX 5090 telemetry.
-Training stays in the reproducible Linux container while the original DFL
-`Training preview` window is forwarded to the Windows desktop through WSLg.
-The preview keeps the familiar shortcuts: `P` refreshes, Space changes view,
-`S` saves, `B` creates a backup, and Enter saves and exits.
+Training stays in the reproducible Linux container. To avoid unreliable WSLg
+copy-mode windows, the trainer atomically publishes a preview image every ten
+seconds and the control panel displays it in a native Windows preview window.
+The **Show preview** button restores that window after it is closed or hidden.
 
 To install both WSL2/Ubuntu and Docker Desktop automatically, run the following
 from an Administrator PowerShell and restart Windows if requested:

@@ -21,6 +21,7 @@ def trainerThread (s2c, c2s, e,
                     pretraining_data_path = None,
                     pretrained_model_path = None,
                     no_preview=False,
+                    preview_output_path=None,
                     force_model_name=None,
                     force_gpu_idxs=None,
                     cpu_only=None,
@@ -90,6 +91,7 @@ def trainerThread (s2c, c2s, e,
                 io.log_info('Starting. Press "Enter" to stop training and save model.')
 
             last_save_time = time.time()
+            last_preview_time = time.time()
 
             execute_programs = [ [x[0], x[1], time.time() ] for x in execute_programs ]
 
@@ -178,6 +180,11 @@ def trainerThread (s2c, c2s, e,
                         model.pass_one_iter()
                     send_preview()
 
+                if (preview_output_path is not None and i != 0 and
+                    time.time() - last_preview_time >= 10):
+                    last_preview_time = time.time()
+                    send_preview()
+
                 if debug:
                     time.sleep(0.005)
 
@@ -216,6 +223,16 @@ def main(**kwargs):
     io.log_info ("Running trainer.\r\n")
 
     no_preview = kwargs.get('no_preview', False)
+    preview_output_path = kwargs.get('preview_output_path', None)
+
+    if preview_output_path is not None:
+        preview_output_path = Path(preview_output_path)
+        preview_output_path.parent.mkdir(exist_ok=True, parents=True)
+        try:
+            preview_output_path.unlink()
+        except FileNotFoundError:
+            pass
+        kwargs['preview_output_path'] = preview_output_path
 
     s2c = queue.Queue()
     c2s = queue.Queue()
@@ -226,11 +243,44 @@ def main(**kwargs):
 
     e.wait() #Wait for inital load to occur.
 
+    def write_preview_image(input):
+        previews = input.get('previews', None)
+        if preview_output_path is None or not previews:
+            return
+
+        preview_rgb = previews[0][1]
+        h, w, c = preview_rgb.shape
+        max_height = 720
+        if h > max_height:
+            resized_w = int(w / (h / max_height))
+            preview_rgb = cv2.resize(preview_rgb, (resized_w, max_height))
+            h, w, c = preview_rgb.shape
+
+        loss_history = input.get('loss_history', None)
+        iteration = input.get('iter', 0)
+        final = preview_rgb
+        if loss_history is not None and len(loss_history) != 0:
+            history = loss_history[-5000:]
+            loss_image = models.ModelBase.get_loss_history_preview(history, iteration, w, c)
+            final = np.concatenate([loss_image, preview_rgb], axis=0)
+
+        final = np.clip(final * 255, 0, 255).astype(np.uint8)
+        temporary_path = preview_output_path.with_name(
+            preview_output_path.stem + '.tmp' + preview_output_path.suffix)
+        if cv2.imwrite(str(temporary_path), final,
+                       [int(cv2.IMWRITE_JPEG_QUALITY), 92]):
+            os.replace(temporary_path, preview_output_path)
+
     if no_preview:
         while True:
             if not c2s.empty():
                 input = c2s.get()
                 op = input.get('op','')
+                if op == 'show':
+                    try:
+                        write_preview_image(input)
+                    except Exception as err:
+                        io.log_err('Unable to write preview image: %s' % err)
                 if op == 'close':
                     break
             try:

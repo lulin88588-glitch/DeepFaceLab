@@ -126,6 +126,7 @@ if __name__ == "__main__":
                   'pretraining_data_path'    : Path(arguments.pretraining_data_dir) if arguments.pretraining_data_dir is not None else None,
                   'pretrained_model_path'    : Path(arguments.pretrained_model_dir) if arguments.pretrained_model_dir is not None else None,
                   'no_preview'               : arguments.no_preview,
+                  'preview_output_path'      : Path(arguments.preview_output_path) if arguments.preview_output_path is not None else None,
                   'force_model_name'         : arguments.force_model_name,
                   'force_gpu_idxs'           : [ int(x) for x in arguments.force_gpu_idxs.split(',') ] if arguments.force_gpu_idxs is not None else None,
                   'cpu_only'                 : arguments.cpu_only,
@@ -145,6 +146,7 @@ if __name__ == "__main__":
     p.add_argument('--model', required=True, dest="model_name", choices=pathex.get_all_dir_names_startswith ( Path(__file__).parent / 'models' , 'Model_'), help="Model class name.")
     p.add_argument('--debug', action="store_true", dest="debug", default=False, help="Debug samples.")
     p.add_argument('--no-preview', action="store_true", dest="no_preview", default=False, help="Disable preview window.")
+    p.add_argument('--preview-output-path', action=fixPathAction, dest="preview_output_path", default=None, help="Write a periodically refreshed preview image to this path.")
     p.add_argument('--force-model-name', dest="force_model_name", default=None, help="Forcing to choose model name from model/ folder.")
     p.add_argument('--cpu-only', action="store_true", dest="cpu_only", default=False, help="Train on CPU.")
     p.add_argument('--force-gpu-idxs', dest="force_gpu_idxs", default=None, help="Force to choose GPU indexes separated by comma.")

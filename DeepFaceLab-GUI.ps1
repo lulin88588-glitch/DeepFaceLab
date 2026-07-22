@@ -14,7 +14,7 @@ $T = @'
   "browse": "\u6d4f\u89c8\u2026",
   "modelType": "\u6a21\u578b\u7c7b\u578b",
   "modelName": "\u6a21\u578b\u540d\u79f0",
-  "preview": "\u663e\u793a\u5b9e\u65f6\u9884\u89c8\u7a97\u53e3\uff08\u63a8\u8350\uff09",
+  "preview": "\u663e\u793a Windows \u5b9e\u65f6\u9884\u89c8\uff08\u63a8\u8350\uff09",
   "silent": "\u4f7f\u7528\u5df2\u6709\u8bbe\u7f6e\u76f4\u63a5\u542f\u52a8",
   "start": "\u5f00\u59cb\u8bad\u7ec3",
   "stop": "\u4fdd\u5b58\u5e76\u505c\u6b62",
@@ -36,7 +36,7 @@ $T = @'
   "selectWorkspace": "\u9009\u62e9 DeepFaceLab workspace",
   "invalidWorkspace": "\u5de5\u4f5c\u533a\u5fc5\u987b\u5305\u542b data_src\u3001data_dst \u548c model \u76ee\u5f55\u3002",
   "cannotStart": "\u65e0\u6cd5\u542f\u52a8",
-  "previewHelp": "\u9884\u89c8\u7a97\u53e3\u5feb\u6377\u952e\uff1aP \u5237\u65b0\uff0c\u7a7a\u683c\u5207\u6362\uff0cS \u4fdd\u5b58\uff0cB \u5907\u4efd\uff0cEnter \u4fdd\u5b58\u5e76\u9000\u51fa\u3002",
+  "previewHelp": "\u9884\u89c8\u6bcf 10 \u79d2\u81ea\u52a8\u5237\u65b0\uff1b\u5173\u95ed\u540e\u53ef\u70b9\u201c\u663e\u793a\u9884\u89c8\u201d\u91cd\u65b0\u6253\u5f00\u3002\u8bf7\u7528\u201c\u4fdd\u5b58\u5e76\u505c\u6b62\u201d\u5b89\u5168\u9000\u51fa\u8bad\u7ec3\u3002",
   "closePrompt": "\u8bad\u7ec3\u4ecd\u5728\u8fd0\u884c\u3002\\n\\n\u662f\uff1a\u4fdd\u5b58\u5e76\u505c\u6b62\u540e\u5173\u95ed\\n\u5426\uff1a\u8ba9\u8bad\u7ec3\u5728\u540e\u53f0\u7ee7\u7eed\u5e76\u5173\u95ed\\n\u53d6\u6d88\uff1a\u8fd4\u56de\u63a7\u5236\u53f0",
   "closeTitle": "\u8bad\u7ec3\u4ecd\u5728\u8fd0\u884c",
   "started": "\u8bad\u7ec3\u5bb9\u5668\u5df2\u542f\u52a8\uff0c\u6a21\u578b\u52a0\u8f7d\u5b8c\u6210\u540e\u4f1a\u51fa\u73b0\u9884\u89c8\u7a97\u53e3\u3002",
@@ -55,7 +55,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using System.Text;
 
 namespace DflGui {
@@ -154,68 +153,6 @@ namespace DflGui {
         }
     }
 
-    public static class PreviewWindow {
-        private delegate bool EnumWindowsProc(IntPtr window, IntPtr state);
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct Rect { public int Left, Top, Right, Bottom; }
-
-        [DllImport("user32.dll")]
-        private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr state);
-        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-        private static extern int GetWindowText(IntPtr window, StringBuilder text, int maxCount);
-        [DllImport("user32.dll")]
-        private static extern int GetWindowTextLength(IntPtr window);
-        [DllImport("user32.dll")]
-        private static extern bool IsWindowVisible(IntPtr window);
-        [DllImport("user32.dll")]
-        private static extern bool GetWindowRect(IntPtr window, out Rect rect);
-        [DllImport("user32.dll")]
-        private static extern bool ShowWindow(IntPtr window, int command);
-        [DllImport("user32.dll")]
-        private static extern bool SetWindowPos(IntPtr window, IntPtr insertAfter,
-                                                int x, int y, int width, int height,
-                                                uint flags);
-        [DllImport("user32.dll")]
-        private static extern bool SetForegroundWindow(IntPtr window);
-        [DllImport("user32.dll")]
-        private static extern bool BringWindowToTop(IntPtr window);
-        [DllImport("user32.dll")]
-        private static extern int GetSystemMetrics(int index);
-
-        public static bool ShowTrainingPreview() {
-            IntPtr preview = IntPtr.Zero;
-            EnumWindows(delegate(IntPtr window, IntPtr state) {
-                if (!IsWindowVisible(window)) return true;
-                int length = GetWindowTextLength(window);
-                if (length == 0) return true;
-                StringBuilder title = new StringBuilder(length + 1);
-                GetWindowText(window, title, title.Capacity);
-                if (title.ToString().IndexOf("Training preview", StringComparison.OrdinalIgnoreCase) >= 0) {
-                    preview = window;
-                    return false;
-                }
-                return true;
-            }, IntPtr.Zero);
-
-            if (preview == IntPtr.Zero) return false;
-
-            ShowWindow(preview, 9); // SW_RESTORE
-            Rect current;
-            GetWindowRect(preview, out current);
-            int screenWidth = Math.Max(800, GetSystemMetrics(0));
-            int screenHeight = Math.Max(600, GetSystemMetrics(1));
-            int width = Math.Min(Math.Max(current.Right - current.Left, 800), screenWidth - 80);
-            int height = Math.Min(Math.Max(current.Bottom - current.Top, 600), screenHeight - 80);
-            int x = Math.Max(0, (screenWidth - width) / 2);
-            int y = Math.Max(0, (screenHeight - height) / 2);
-            SetWindowPos(preview, new IntPtr(-1), x, y, width, height, 0x0040); // TOPMOST + SHOW
-            SetWindowPos(preview, new IntPtr(-2), x, y, width, height, 0x0040); // NOTOPMOST
-            BringWindowToTop(preview);
-            SetForegroundWindow(preview);
-            return true;
-        }
-    }
 }
 '@ -Language CSharp
 
@@ -265,6 +202,19 @@ $form.BackColor = $background
 $form.ForeColor = $text
 $form.Font = $font
 $form.AutoScaleMode = 'Dpi'
+
+$previewForm = New-Object Windows.Forms.Form
+$previewForm.Text = 'DeepFaceLab - ' + $T.showPreview
+$previewForm.ClientSize = New-Object Drawing.Size(1100, 820)
+$previewForm.MinimumSize = New-Object Drawing.Size(720, 540)
+$previewForm.StartPosition = 'CenterScreen'
+$previewForm.BackColor = [Drawing.Color]::Black
+$previewForm.KeyPreview = $true
+$previewPicture = New-Object Windows.Forms.PictureBox
+$previewPicture.Dock = 'Fill'
+$previewPicture.BackColor = [Drawing.Color]::Black
+$previewPicture.SizeMode = 'Zoom'
+$previewForm.Controls.Add($previewPicture)
 
 $title = New-Object Windows.Forms.Label
 $title.Text = $T.title
@@ -446,6 +396,37 @@ function Add-Log([string] $Line) {
     $logBox.ScrollToCaret()
 }
 
+function Update-NativePreview([switch] $Show) {
+    $previewPath = Join-Path $workspaceBox.Text '.dfl-preview.jpg'
+    if (-not (Test-Path -LiteralPath $previewPath)) { return $false }
+
+    try {
+        $item = Get-Item -LiteralPath $previewPath
+        if ($item.LastWriteTimeUtc.Ticks -ne $script:lastPreviewTicks) {
+            $bytes = [IO.File]::ReadAllBytes($previewPath)
+            $stream = New-Object IO.MemoryStream(,$bytes)
+            $sourceImage = [Drawing.Image]::FromStream($stream)
+            $newImage = New-Object Drawing.Bitmap($sourceImage)
+            $sourceImage.Dispose()
+            $stream.Dispose()
+            $oldImage = $previewPicture.Image
+            $previewPicture.Image = $newImage
+            if ($null -ne $oldImage) { $oldImage.Dispose() }
+            $script:lastPreviewTicks = $item.LastWriteTimeUtc.Ticks
+        }
+        if ($Show -or -not $previewForm.Visible) {
+            if (-not $previewForm.Visible) { $previewForm.Show($form) }
+            $previewForm.WindowState = 'Normal'
+            $previewForm.BringToFront()
+            $previewForm.Activate()
+        }
+        return $true
+    }
+    catch {
+        return $false
+    }
+}
+
 function Test-Workspace([string] $Workspace) {
     return (Test-Path -LiteralPath (Join-Path $Workspace 'data_src')) -and
            (Test-Path -LiteralPath (Join-Path $Workspace 'data_dst')) -and
@@ -488,7 +469,9 @@ $script:training = $false
 $script:closeAfterStop = $false
 $script:tickCount = 0
 $script:lastContainerState = ''
-$script:previewFocusedForSession = $false
+$script:nativePreviewShownForSession = $false
+$script:lastPreviewTicks = 0L
+$script:applicationClosing = $false
 
 function Start-Operation([string] $Name, [string] $Arguments, [string] $Status) {
     if ($commandRunner.Active) {
@@ -569,7 +552,10 @@ $startButton.Add_Click({
         $args += ' --force-model-name ' + (Quote-Arg $modelNameBox.Text.Trim())
     }
     if ($silentCheck.Checked) { $args += ' --silent-start' }
-    if (-not $previewCheck.Checked) { $args += ' --no-preview' }
+    $args += ' --no-preview'
+    if ($previewCheck.Checked) {
+        $args += ' --preview-output-path /workspace/.dfl-preview.jpg'
+    }
     Start-Operation 'start' $args $T.starting
 })
 
@@ -579,7 +565,7 @@ $stopButton.Add_Click({
 })
 
 $showPreviewButton.Add_Click({
-    if (-not [DflGui.PreviewWindow]::ShowTrainingPreview()) {
+    if (-not (Update-NativePreview -Show)) {
         [Windows.Forms.MessageBox]::Show($T.previewNotFound, $T.title, 'OK', 'Information') | Out-Null
     }
 })
@@ -626,9 +612,9 @@ $timer.Add_Tick({
             $showPreviewButton.Enabled = $true
             $startButton.Enabled = $false
             if (-not $logRunner.Active -and $script:operation -ne 'start') { Attach-TrainingLog }
-            if (-not $script:previewFocusedForSession -and
-                [DflGui.PreviewWindow]::ShowTrainingPreview()) {
-                $script:previewFocusedForSession = $true
+            if ($previewCheck.Checked -and -not $script:nativePreviewShownForSession -and
+                (Update-NativePreview -Show)) {
+                $script:nativePreviewShownForSession = $true
             }
         }
         else {
@@ -646,10 +632,16 @@ $timer.Add_Tick({
             $runtimeLabel.ForeColor = $muted
             $stopButton.Enabled = $false
             $showPreviewButton.Enabled = $false
-            $script:previewFocusedForSession = $false
+            $script:nativePreviewShownForSession = $false
+            $script:lastPreviewTicks = 0L
             if (-not $commandRunner.Active) { Set-Busy $false }
         }
         $script:lastContainerState = $state
+    }
+
+    if ($script:training -and $previewCheck.Checked -and
+        $script:nativePreviewShownForSession) {
+        [void](Update-NativePreview)
     }
 
     if (($script:tickCount % 4) -eq 1) {
@@ -664,6 +656,14 @@ $timer.Add_Tick({
                     $parts[3] + ' / ' + $parts[4] + ' MiB'
             }
         }
+    }
+})
+
+$previewForm.Add_FormClosing({
+    param($sender, $eventArgs)
+    if (-not $script:applicationClosing) {
+        $eventArgs.Cancel = $true
+        $previewForm.Hide()
     }
 })
 
@@ -702,6 +702,8 @@ $form.Add_FormClosing({
         }
     }
     $timer.Stop()
+    $script:applicationClosing = $true
+    $previewForm.Close()
     $logRunner.StopMonitor()
     if ($commandRunner.Active) { $commandRunner.StopMonitor() }
 })
@@ -710,4 +712,7 @@ $form.Add_FormClosing({
 $timer.Dispose()
 $commandRunner.Dispose()
 $logRunner.Dispose()
+$oldPreviewImage = $previewPicture.Image
+if ($null -ne $oldPreviewImage) { $oldPreviewImage.Dispose() }
+$previewForm.Dispose()
 $form.Dispose()
