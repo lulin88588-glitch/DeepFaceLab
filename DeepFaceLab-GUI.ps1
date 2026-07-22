@@ -18,6 +18,8 @@ $T = @'
   "silent": "\u4f7f\u7528\u5df2\u6709\u8bbe\u7f6e\u76f4\u63a5\u542f\u52a8",
   "start": "\u5f00\u59cb\u8bad\u7ec3",
   "stop": "\u4fdd\u5b58\u5e76\u505c\u6b62",
+  "showPreview": "\u663e\u793a\u9884\u89c8",
+  "previewNotFound": "\u6682\u672a\u627e\u5230\u9884\u89c8\u7a97\u53e3\uff0c\u8bf7\u7b49\u6a21\u578b\u52a0\u8f7d\u5b8c\u6210\u540e\u518d\u8bd5\u3002",
   "build": "\u5b89\u88c5 / \u66f4\u65b0\u8fd0\u884c\u73af\u5883",
   "verify": "\u73af\u5883\u68c0\u6d4b",
   "open": "\u6253\u5f00\u5de5\u4f5c\u533a",
@@ -53,6 +55,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace DflGui {
@@ -148,6 +151,69 @@ namespace DflGui {
                     Output = (output + Environment.NewLine + error).Trim()
                 };
             }
+        }
+    }
+
+    public static class PreviewWindow {
+        private delegate bool EnumWindowsProc(IntPtr window, IntPtr state);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct Rect { public int Left, Top, Right, Bottom; }
+
+        [DllImport("user32.dll")]
+        private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr state);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        private static extern int GetWindowText(IntPtr window, StringBuilder text, int maxCount);
+        [DllImport("user32.dll")]
+        private static extern int GetWindowTextLength(IntPtr window);
+        [DllImport("user32.dll")]
+        private static extern bool IsWindowVisible(IntPtr window);
+        [DllImport("user32.dll")]
+        private static extern bool GetWindowRect(IntPtr window, out Rect rect);
+        [DllImport("user32.dll")]
+        private static extern bool ShowWindow(IntPtr window, int command);
+        [DllImport("user32.dll")]
+        private static extern bool SetWindowPos(IntPtr window, IntPtr insertAfter,
+                                                int x, int y, int width, int height,
+                                                uint flags);
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr window);
+        [DllImport("user32.dll")]
+        private static extern bool BringWindowToTop(IntPtr window);
+        [DllImport("user32.dll")]
+        private static extern int GetSystemMetrics(int index);
+
+        public static bool ShowTrainingPreview() {
+            IntPtr preview = IntPtr.Zero;
+            EnumWindows(delegate(IntPtr window, IntPtr state) {
+                if (!IsWindowVisible(window)) return true;
+                int length = GetWindowTextLength(window);
+                if (length == 0) return true;
+                StringBuilder title = new StringBuilder(length + 1);
+                GetWindowText(window, title, title.Capacity);
+                if (title.ToString().IndexOf("Training preview", StringComparison.OrdinalIgnoreCase) >= 0) {
+                    preview = window;
+                    return false;
+                }
+                return true;
+            }, IntPtr.Zero);
+
+            if (preview == IntPtr.Zero) return false;
+
+            ShowWindow(preview, 9); // SW_RESTORE
+            Rect current;
+            GetWindowRect(preview, out current);
+            int screenWidth = Math.Max(800, GetSystemMetrics(0));
+            int screenHeight = Math.Max(600, GetSystemMetrics(1));
+            int width = Math.Min(Math.Max(current.Right - current.Left, 800), screenWidth - 80);
+            int height = Math.Min(Math.Max(current.Bottom - current.Top, 600), screenHeight - 80);
+            int x = Math.Max(0, (screenWidth - width) / 2);
+            int y = Math.Max(0, (screenHeight - height) / 2);
+            SetWindowPos(preview, new IntPtr(-1), x, y, width, height, 0x0040); // TOPMOST + SHOW
+            SetWindowPos(preview, new IntPtr(-2), x, y, width, height, 0x0040); // NOTOPMOST
+            BringWindowToTop(preview);
+            SetForegroundWindow(preview);
+            return true;
         }
     }
 }
@@ -302,9 +368,16 @@ $configPanel.Controls.Add($startButton)
 $stopButton = New-Object Windows.Forms.Button
 $stopButton.Text = $T.stop
 $stopButton.Enabled = $false
-$stopButton.SetBounds(18, 313, 314, 42)
+$stopButton.SetBounds(18, 313, 202, 42)
 Style-Button $stopButton $danger
 $configPanel.Controls.Add($stopButton)
+
+$showPreviewButton = New-Object Windows.Forms.Button
+$showPreviewButton.Text = $T.showPreview
+$showPreviewButton.Enabled = $false
+$showPreviewButton.SetBounds(230, 313, 102, 42)
+Style-Button $showPreviewButton $border
+$configPanel.Controls.Add($showPreviewButton)
 
 $buildButton = New-Object Windows.Forms.Button
 $buildButton.Text = $T.build
@@ -405,6 +478,7 @@ function Set-Busy([bool] $Busy) {
     $browseButton.Enabled = $workspaceBox.Enabled
     $modelTypeBox.Enabled = $workspaceBox.Enabled
     $modelNameBox.Enabled = $workspaceBox.Enabled
+    $showPreviewButton.Enabled = $script:training
 }
 
 $commandRunner = New-Object DflGui.ProcessMonitor
@@ -414,6 +488,7 @@ $script:training = $false
 $script:closeAfterStop = $false
 $script:tickCount = 0
 $script:lastContainerState = ''
+$script:previewFocusedForSession = $false
 
 function Start-Operation([string] $Name, [string] $Arguments, [string] $Status) {
     if ($commandRunner.Active) {
@@ -503,6 +578,12 @@ $stopButton.Add_Click({
     Start-Operation 'stop' ('kill --signal=SIGINT ' + $containerName) $T.saving
 })
 
+$showPreviewButton.Add_Click({
+    if (-not [DflGui.PreviewWindow]::ShowTrainingPreview()) {
+        [Windows.Forms.MessageBox]::Show($T.previewNotFound, $T.title, 'OK', 'Information') | Out-Null
+    }
+})
+
 $timer = New-Object Windows.Forms.Timer
 $timer.Interval = 1000
 $timer.Add_Tick({
@@ -542,8 +623,13 @@ $timer.Add_Tick({
             $runtimeLabel.Text = $T.runtime + ': ' + $T.running
             $runtimeLabel.ForeColor = $accent
             $stopButton.Enabled = -not $commandRunner.Active
+            $showPreviewButton.Enabled = $true
             $startButton.Enabled = $false
             if (-not $logRunner.Active -and $script:operation -ne 'start') { Attach-TrainingLog }
+            if (-not $script:previewFocusedForSession -and
+                [DflGui.PreviewWindow]::ShowTrainingPreview()) {
+                $script:previewFocusedForSession = $true
+            }
         }
         else {
             if ($script:training -and $script:operation -ne 'start') {
@@ -559,6 +645,8 @@ $timer.Add_Tick({
             $runtimeLabel.Text = $T.runtime + ': ' + $T.notRunning
             $runtimeLabel.ForeColor = $muted
             $stopButton.Enabled = $false
+            $showPreviewButton.Enabled = $false
+            $script:previewFocusedForSession = $false
             if (-not $commandRunner.Active) { Set-Busy $false }
         }
         $script:lastContainerState = $state
