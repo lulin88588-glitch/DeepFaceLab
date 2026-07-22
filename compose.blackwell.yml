@@ -13,10 +13,18 @@ services:
       DFL_REQUIRE_NATIVE_BLACKWELL: "1"
       NVIDIA_VISIBLE_DEVICES: all
       NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      DISPLAY: ":0"
+      WAYLAND_DISPLAY: wayland-0
+      XDG_RUNTIME_DIR: /mnt/wslg/runtime-dir
+      QT_X11_NO_MITSHM: "1"
     volumes:
       - .:/opt/DeepFaceLab
-      - ./workspace:/workspace
+      - ${DFL_WORKSPACE_PATH:-./workspace}:/workspace
       - dfl-cuda-cache:/root/.cache/nvidia
+      # Docker Desktop exposes the Windows WSLg server here. The second mount
+      # puts its X11 socket at the path expected by Qt/OpenCV.
+      - /mnt/host/wslg:/mnt/wslg
+      - /mnt/host/wslg/.X11-unix:/tmp/.X11-unix
     stdin_open: true
     tty: true
 

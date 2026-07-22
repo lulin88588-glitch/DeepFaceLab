@@ -43,7 +43,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        ffmpeg libglib2.0-0 libgl1 python3 python3-pip python3-venv \
+        ffmpeg libglib2.0-0 libgl1 libice6 libsm6 \
+        python3 python3-pip python3-venv \
     && rm -rf /var/lib/apt/lists/*
 
 RUN python3 -m venv /opt/dfl-venv
