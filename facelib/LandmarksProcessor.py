@@ -390,7 +390,11 @@ def expand_eyebrows(lmrks, eyebrows_expand_mod=1.0):
 def get_image_hull_mask (image_shape, image_landmarks, eyebrows_expand_mod=1.0 ):
     hull_mask = np.zeros(image_shape[0:2]+(1,),dtype=np.float32)
 
-    lmrks = expand_eyebrows(image_landmarks, eyebrows_expand_mod)
+    # Legacy facesets may store landmarks as float64. OpenCV 4.10+ accepts
+    # only CV_32F/CV_32S points for convexHull, so normalize without mutating
+    # the sample's original landmark array.
+    lmrks = np.asarray(image_landmarks, dtype=np.float32).copy()
+    lmrks = expand_eyebrows(lmrks, eyebrows_expand_mod)
 
     r_jaw = (lmrks[0:9], lmrks[17:18])
     l_jaw = (lmrks[8:17], lmrks[26:27])
@@ -404,7 +408,8 @@ def get_image_hull_mask (image_shape, image_landmarks, eyebrows_expand_mod=1.0 )
 
     for item in parts:
         merged = np.concatenate(item)
-        cv2.fillConvexPoly(hull_mask, cv2.convexHull(merged), (1,) )
+        hull = cv2.convexHull(merged).astype(np.int32)
+        cv2.fillConvexPoly(hull_mask, hull, (1,) )
 
     return hull_mask
 
@@ -416,7 +421,7 @@ def get_image_eye_mask (image_shape, image_landmarks):
 
     hull_mask = np.zeros( (h,w,1),dtype=np.float32)
 
-    image_landmarks = image_landmarks.astype(int)
+    image_landmarks = np.asarray(image_landmarks, dtype=np.int32)
 
     cv2.fillConvexPoly( hull_mask, cv2.convexHull( image_landmarks[36:42]), (1,) )
     cv2.fillConvexPoly( hull_mask, cv2.convexHull( image_landmarks[42:48]), (1,) )
@@ -439,7 +444,7 @@ def get_image_mouth_mask (image_shape, image_landmarks):
 
     hull_mask = np.zeros( (h,w,1),dtype=np.float32)
 
-    image_landmarks = image_landmarks.astype(int)
+    image_landmarks = np.asarray(image_landmarks, dtype=np.int32)
 
     cv2.fillConvexPoly( hull_mask, cv2.convexHull( image_landmarks[60:]), (1,) )
 

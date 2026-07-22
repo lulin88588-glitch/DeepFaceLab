@@ -5,8 +5,9 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from core import imagelib
 from core.leras import nn
-from facelib import FaceType
+from facelib import FaceType, LandmarksProcessor
 from samplelib import Sample, SampleProcessor, SampleType
 
 
@@ -155,6 +156,29 @@ class LerasTensorFlowCompatibilityTest(unittest.TestCase):
             self.assertTrue(np.isfinite(output).all())
             self.assertGreaterEqual(output.min(), 0.0)
             self.assertLessEqual(output.max(), 1.0)
+
+    def test_legacy_numpy_resolution_with_modern_opencv(self):
+        params = imagelib.gen_warp_params(
+            np.int64(224),
+            rnd_state=np.random.RandomState(5090),
+            warp_rnd_state=np.random.RandomState(5090),
+        )
+        self.assertEqual(params["w"], 224)
+        self.assertEqual(params["rmat"].shape, (2, 3))
+        self.assertTrue(np.isfinite(params["rmat"]).all())
+
+    def test_legacy_float64_landmarks_with_modern_opencv(self):
+        landmarks = np.random.RandomState(5090).uniform(32, 224, (68, 2))
+        image_shape = (256, 256, 3)
+        masks = (
+            LandmarksProcessor.get_image_hull_mask(image_shape, landmarks),
+            LandmarksProcessor.get_image_eye_mask(image_shape, landmarks),
+            LandmarksProcessor.get_image_mouth_mask(image_shape, landmarks),
+        )
+        for mask in masks:
+            self.assertEqual(mask.shape, (256, 256, 1))
+            self.assertEqual(mask.dtype, np.float32)
+            self.assertTrue(np.isfinite(mask).all())
 
 
 if __name__ == "__main__":

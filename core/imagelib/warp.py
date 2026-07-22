@@ -105,6 +105,9 @@ def gen_pts(W, H, rnd_state=None):
     
     
 def gen_warp_params (w, flip=False, rotation_range=[-10,10], scale_range=[-0.5, 0.5], tx_range=[-0.05, 0.05], ty_range=[-0.05, 0.05], rnd_state=None, warp_rnd_state=None  ):
+    # Model options loaded from legacy pickle files may contain NumPy scalar
+    # integers. OpenCV 4.10+ no longer accepts those inside point/size tuples.
+    w = int(w)
     if rnd_state is None:
         rnd_state = np.random
     if warp_rnd_state is None:
@@ -143,7 +146,10 @@ def gen_warp_params (w, flip=False, rotation_range=[-10,10], scale_range=[-0.5, 
     ################
     
     #random transform
-    random_transform_mat = cv2.getRotationMatrix2D((w // 2, w // 2), rotation, scale)
+    center = (float(w // 2), float(w // 2))
+    random_transform_mat = cv2.getRotationMatrix2D(
+        center, float(rotation), float(scale)
+    )
     random_transform_mat[:, 2] += (tx*w, ty*w)
 
     params = dict()
