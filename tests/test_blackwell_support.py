@@ -21,12 +21,15 @@ class BlackwellSupportTest(unittest.TestCase):
         dockerfile = (repository / "Dockerfile.blackwell").read_text(
             encoding="utf-8"
         )
+        cuda_requirements = (
+            repository / "requirements-blackwell-cuda.txt"
+        ).read_text(encoding="utf-8")
         for expected in (
-            "a481b10260dfdf833a1b16007eead49c1d7febf3",
-            "HERMETIC_CUDA_VERSION=12.8.1",
-            "HERMETIC_CUDNN_VERSION=9.8.0",
-            "HERMETIC_CUDA_COMPUTE_CAPABILITIES=sm_120,compute_120",
-            "--config=cuda_nvcc",
+            "v2.21.0-sm120-cuda128-py310-py313",
+            "tensorflow-2.21.0%2Bselfbuild-cp312-cp312-linux_x86_64.whl",
+            "3a13df366c02ca0197b465e8bda6bdbb9285fe56e2ed50724b5fc15d3cf31043",
+            "sha256sum --check --strict",
+            "--constraint /tmp/requirements-blackwell-cuda.txt",
             "verify-tensorflow-wheel.py",
             "verify_tensorflow_build.py",
             "DFL_REQUIRE_NATIVE_BLACKWELL=1",
@@ -38,7 +41,18 @@ class BlackwellSupportTest(unittest.TestCase):
             dockerfile,
             r"FROM nvidia/cuda:[^\s]+@sha256:[0-9a-f]{64}",
         )
-        self.assertNotIn("--config=cuda_clang", dockerfile)
+        self.assertLess(
+            dockerfile.index("sha256sum --check --strict"),
+            dockerfile.index("verify-tensorflow-wheel.py"),
+            "The downloaded wheel digest must be checked before cubin inspection.",
+        )
+        for expected in (
+            "nvidia-cuda-runtime-cu12==12.8.90",
+            "nvidia-cudnn-cu12==9.8.0.87",
+            "nvidia-nvjitlink-cu12==12.8.93",
+        ):
+            with self.subTest(cuda_requirement=expected):
+                self.assertIn(expected, cuda_requirements)
 
     def test_version_and_device_normalization(self):
         self.assertEqual(parse_cuda_version("12.8.1"), (12, 8))

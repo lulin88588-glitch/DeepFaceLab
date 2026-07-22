@@ -3,8 +3,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.blackwell
-      args:
-        TF_BUILD_JOBS: "${TF_BUILD_JOBS:-16}"
     image: deepfacelab:blackwell
     gpus: all
     working_dir: /opt/DeepFaceLab

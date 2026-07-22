@@ -136,20 +136,24 @@ Unfortunately, there is no "make everything ok" button in DeepFaceLab. You shoul
 
 ## RTX 5090 / RTX 50-series (Blackwell)
 
-The maintained Blackwell runtime uses WSL2 and builds TensorFlow 2.21.0 from its
-official pinned source commit. CUDA 12.8.1 `nvcc` produces native `sm_120`
-cubins for RTX 50-series cards plus `compute_120` PTX fallback code. Install WSL2
-plus Docker Desktop's WSL2 backend, then run from PowerShell:
+The maintained Blackwell runtime uses WSL2 and the published TensorFlow 2.21.0
+wheel from [TensorflowDockerBuilder](https://github.com/Syraxius/TensorflowDockerBuilder).
+That CUDA 12.8.1 build contains native `sm_120` cubins for RTX 50-series cards
+plus `compute_120` PTX fallback code. The release URL and its GitHub-recorded
+SHA-256 are pinned in `Dockerfile.blackwell`. Install WSL2 plus Docker Desktop's
+WSL2 backend, while `requirements-blackwell-cuda.txt` locks the matching CUDA
+12.8.1 and cuDNN 9.8 runtime packages. Then run from PowerShell:
 
 ```powershell
 # Run once from an Administrator PowerShell, then restart if requested.
 .\enable_wsl2_admin.ps1
 ```
 
-After installing Docker Desktop and enabling its WSL2 engine:
+After installing Docker Desktop and enabling its WSL2 engine, use the command
+launcher (it works even when Windows PowerShell script execution is disabled):
 
 ```powershell
-.\run_blackwell.ps1
+.\run_blackwell.cmd
 ```
 
 To install both WSL2/Ubuntu and Docker Desktop automatically, run the following
@@ -159,10 +163,10 @@ from an Administrator PowerShell and restart Windows if requested:
 .\install_blackwell_prereqs_admin.ps1
 ```
 
-The first build compiles TensorFlow and can take considerable time and disk
-space; Docker BuildKit caches subsequent builds. With no arguments the command
-runs an actual small SAEHD forward/backward step on GPU 0 and fails unless the
-TensorFlow wheel reports CUDA 12.8+ and native `sm_120` kernels.
+The first build downloads the pinned wheel and dependencies; Docker BuildKit
+caches subsequent builds. With no arguments the command runs an actual small
+SAEHD forward/backward step on GPU 0 and fails unless the TensorFlow wheel
+reports CUDA 12.8+ and native `sm_120` kernels.
 
 The image build also inspects the generated wheel with NVIDIA `cuobjdump` and
 fails if its shared libraries contain no real `sm_120` cubin. This separates
@@ -170,14 +174,14 @@ native Blackwell code from a PTX-only build before the runtime GPU test begins.
 Pass a DeepFaceLab command after the script name, for example:
 
 ```powershell
-.\run_blackwell.ps1 main.py --help
-.\run_blackwell.ps1 main.py train --help
+.\run_blackwell.cmd main.py --help
+.\run_blackwell.cmd main.py train --help
 ```
 
 The repository is also tested against the stock upstream TensorFlow 2.21 API.
 From an Ubuntu WSL2 shell, `bash setup_modern_wsl.sh` creates that development
 environment. Stock wheels are an API-compatibility lane and are not accepted as
-proof of native `sm_120` support; the source-built container is the production
+proof of native `sm_120` support; the digest-pinned container is the production
 Blackwell runtime. TensorFlow, CUDA and cuDNN must not be mixed with the legacy
 native-Windows runtime in this mode.
 
