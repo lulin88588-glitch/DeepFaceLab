@@ -1,6 +1,5 @@
 import numpy as np
 from core.leras import nn
-from tensorflow.python.ops import control_flow_ops, state_ops
 
 tf = nn.tf
 
@@ -52,7 +51,7 @@ class AdaBelief(nn.OptimizerBase):
 
         if self.clipnorm > 0.0:
             norm = tf.sqrt( sum([tf.reduce_sum(tf.square(tf.cast(g, tf.float32))) for g,v in grads_vars]))
-        updates += [ state_ops.assign_add( self.iterations, 1) ]
+        updates += [ tf.assign_add( self.iterations, 1) ]
         for i, (g,v) in enumerate(grads_vars):
             if self.clipnorm > 0.0:
                 g = self.tf_clip_norm(g, self.clipnorm, tf.cast(norm, g.dtype) )
@@ -73,9 +72,9 @@ class AdaBelief(nn.OptimizerBase):
                 v_diff *= lr_rnd
             new_v = v + v_diff
 
-            updates.append (state_ops.assign(ms, m_t))
-            updates.append (state_ops.assign(vs, v_t))
-            updates.append (state_ops.assign(v, new_v))
+            updates.append (tf.assign(ms, m_t))
+            updates.append (tf.assign(vs, v_t))
+            updates.append (tf.assign(v, new_v))
 
-        return control_flow_ops.group ( *updates, name=self.name+'_updates')
+        return tf.group ( *updates, name=self.name+'_updates')
 nn.AdaBelief = AdaBelief

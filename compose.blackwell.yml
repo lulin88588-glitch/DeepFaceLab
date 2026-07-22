@@ -1,0 +1,26 @@
+services:
+  deepfacelab:
+    build:
+      context: .
+      dockerfile: Dockerfile.blackwell
+      args:
+        TF_BUILD_JOBS: "${TF_BUILD_JOBS:-16}"
+    image: deepfacelab:blackwell
+    gpus: all
+    working_dir: /opt/DeepFaceLab
+    environment:
+      CUDA_CACHE_PATH: /root/.cache/nvidia/ComputeCache
+      CUDA_CACHE_MAXSIZE: "2147483647"
+      TF_CPP_MIN_LOG_LEVEL: "2"
+      DFL_REQUIRE_NATIVE_BLACKWELL: "1"
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    volumes:
+      - .:/opt/DeepFaceLab
+      - ./workspace:/workspace
+      - dfl-cuda-cache:/root/.cache/nvidia
+    stdin_open: true
+    tty: true
+
+volumes:
+  dfl-cuda-cache:

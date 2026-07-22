@@ -2,8 +2,10 @@ import sys
 import ctypes
 import os
 import multiprocessing
-import json
+import queue
+import subprocess
 import time
+import traceback
 from pathlib import Path
 from core.interact import interact as io
 
@@ -91,66 +93,53 @@ class Devices(object):
 
     @staticmethod
     def _get_tf_devices_proc(q : multiprocessing.Queue):
-        
-        if sys.platform[0:3] == 'win':
-            compute_cache_path = Path(os.environ['APPDATA']) / 'NVIDIA' / ('ComputeCache_ALL')
-            os.environ['CUDA_CACHE_PATH'] = str(compute_cache_path)
-            if not compute_cache_path.exists():
-                io.log_info("Caching GPU kernels...")
-                compute_cache_path.mkdir(parents=True, exist_ok=True)
-                
-        import tensorflow
-        
-        tf_version = tensorflow.version.VERSION
-        #if tf_version is None:
-        #    tf_version = tensorflow.version.GIT_VERSION
-        if tf_version[0] == 'v':
-            tf_version = tf_version[1:]
-        if tf_version[0] == '2':
-            tf = tensorflow.compat.v1
-        else:
-            tf = tensorflow
-        
-        import logging
-        # Disable tensorflow warnings
-        tf_logger = logging.getLogger('tensorflow')
-        tf_logger.setLevel(logging.ERROR)
+        try:
+            if sys.platform[0:3] == 'win':
+                compute_cache_path = Path(os.environ['APPDATA']) / 'NVIDIA' / ('ComputeCache_ALL')
+                os.environ['CUDA_CACHE_PATH'] = str(compute_cache_path)
+                if not compute_cache_path.exists():
+                    io.log_info("Caching GPU kernels...")
+                    compute_cache_path.mkdir(parents=True, exist_ok=True)
 
-        from tensorflow.python.client import device_lib
-
-        devices = []
+            import tensorflow
         
-        physical_devices = device_lib.list_local_devices()
-        physical_devices_f = {}
-        for dev in physical_devices:
-            dev_type = dev.device_type
-            dev_tf_name = dev.name
-            dev_tf_name = dev_tf_name[ dev_tf_name.index(dev_type) : ]
-            
-            dev_idx = int(dev_tf_name.split(':')[-1])
-            
-            if dev_type in ['GPU','DML']:
-                dev_name = dev_tf_name
-                
-                dev_desc = dev.physical_device_desc
-                if len(dev_desc) != 0:
-                    if dev_desc[0] == '{':
-                        dev_desc_json = json.loads(dev_desc)
-                        dev_desc_json_name = dev_desc_json.get('name',None)
-                        if dev_desc_json_name is not None:
-                            dev_name = dev_desc_json_name
-                    else:
-                        for param, value in ( v.split(':') for v in dev_desc.split(',') ):
-                            param = param.strip()
-                            value = value.strip()
-                            if param == 'name':
-                                dev_name = value
-                                break
-                
-                physical_devices_f[dev_idx] = (dev_type, dev_name, dev.memory_limit)
-                        
-        q.put(physical_devices_f)
-        time.sleep(0.1)
+            import logging
+            # Disable tensorflow warnings
+            tf_logger = logging.getLogger('tensorflow')
+            tf_logger.setLevel(logging.ERROR)
+
+            smi_devices = {}
+            try:
+                smi = subprocess.run(
+                    [
+                        'nvidia-smi',
+                        '--query-gpu=index,name,memory.total',
+                        '--format=csv,noheader,nounits',
+                    ],
+                    check=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    universal_newlines=True,
+                    timeout=10,
+                )
+                for line in smi.stdout.splitlines():
+                    index, name, total_mem_mb = [part.strip() for part in line.split(',', 2)]
+                    smi_devices[int(index)] = (name, int(total_mem_mb) * 1024**2)
+            except (OSError, ValueError, subprocess.SubprocessError):
+                pass
+
+            physical_devices = tensorflow.config.list_physical_devices('GPU')
+            physical_devices_f = {}
+            for dev_idx, dev in enumerate(physical_devices):
+                details = tensorflow.config.experimental.get_device_details(dev)
+                fallback_name = details.get('device_name', dev.name)
+                dev_name, total_mem = smi_devices.get(dev_idx, (fallback_name, 1))
+                physical_devices_f[dev_idx] = ('GPU', dev_name, total_mem)
+
+            q.put((physical_devices_f, None))
+            time.sleep(0.1)
+        except Exception:
+            q.put((None, traceback.format_exc()))
         
         
     @staticmethod
@@ -162,16 +151,30 @@ class Devices(object):
             os.environ.pop('CUDA_VISIBLE_DEVICES')
         
         os.environ['TF_DIRECTML_KERNEL_CACHE_SIZE'] = '2500'
-        os.environ['CUDA_​CACHE_​MAXSIZE'] = '2147483647'
+        # The previous key contained invisible Unicode characters and was
+        # ignored by CUDA. Blackwell wheels may JIT PTX on their first run, so
+        # retain a large, valid kernel cache.
+        os.environ['CUDA_CACHE_MAXSIZE'] = '2147483647'
         os.environ['TF_MIN_GPU_MULTIPROCESSOR_COUNT'] = '2'
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' # tf log errors only
         
         q = multiprocessing.Queue()
         p = multiprocessing.Process(target=Devices._get_tf_devices_proc, args=(q,), daemon=True)
         p.start()
-        p.join()
-        
-        visible_devices = q.get()
+        p.join(timeout=120)
+        if p.is_alive():
+            p.terminate()
+            p.join()
+            raise RuntimeError("TensorFlow device detection timed out after 120 seconds.")
+
+        try:
+            visible_devices, detection_error = q.get(timeout=1)
+        except queue.Empty:
+            raise RuntimeError(
+                f"TensorFlow device detection exited without a result (exit code {p.exitcode})."
+            )
+        if detection_error is not None:
+            raise RuntimeError("TensorFlow device detection failed:\n" + detection_error)
 
         os.environ['NN_DEVICES_INITIALIZED'] = '1'
         os.environ['NN_DEVICES_COUNT'] = str(len(visible_devices))

@@ -1,0 +1,119 @@
+# syntax=docker/dockerfile:1.7
+
+FROM nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04@sha256:3986465b3dd3b4d602c07061f2cff417e0bfb24810129408d4eb12e111015a6c AS tensorflow-builder
+
+ARG TF_REF=v2.21.0
+ARG TF_COMMIT=a481b10260dfdf833a1b16007eead49c1d7febf3
+ARG BAZELISK_VERSION=v1.26.0
+ARG BAZELISK_SHA256=6539c12842ad76966f3d493e8f80d67caa84ec4a000e220d5459833c967c12bc
+ARG TF_BUILD_JOBS=16
+ARG LLVM_VERSION=20
+ARG LLVM_INSTALLER_SHA256=fdb2d4f6c2ef42ed5d9cb07c56464b69a93eee15f6cf2f9012769f7fec8a09f4
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONUNBUFFERED=1
+
+RUN --mount=target=/var/lib/apt/lists,type=cache,id=tf-apt-lists \
+    --mount=target=/var/cache/apt,type=cache,id=tf-apt-cache \
+    rm -f /etc/apt/apt.conf.d/docker-clean \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential ca-certificates curl git gnupg lsb-release patchelf \
+        python3 python3-dev python3-pip python3-venv \
+        software-properties-common unzip wget zip
+
+# NVCC compiles the CUDA device code. Clang 20 is the explicitly selected host
+# compiler, avoiding accidental dependence on whichever compiler the base image
+# happens to expose in the future.
+RUN wget -q https://apt.llvm.org/llvm.sh -O /tmp/llvm.sh \
+    && echo "${LLVM_INSTALLER_SHA256}  /tmp/llvm.sh" | sha256sum --check --strict \
+    && chmod +x /tmp/llvm.sh \
+    && /tmp/llvm.sh "${LLVM_VERSION}" all \
+    && rm /tmp/llvm.sh
+
+RUN python3 -m venv /opt/tf-build \
+    && /opt/tf-build/bin/python -m pip install --upgrade pip setuptools wheel \
+    && /opt/tf-build/bin/python -m pip install numpy==1.26.4 packaging
+
+RUN wget -q \
+        "https://github.com/bazelbuild/bazelisk/releases/download/${BAZELISK_VERSION}/bazelisk-linux-amd64" \
+        -O /usr/local/bin/bazel \
+    && echo "${BAZELISK_SHA256}  /usr/local/bin/bazel" | sha256sum --check --strict \
+    && chmod +x /usr/local/bin/bazel
+
+WORKDIR /src
+RUN git clone --depth 1 --branch "${TF_REF}" \
+        https://github.com/tensorflow/tensorflow.git tensorflow \
+    && test "$(git -C tensorflow rev-parse HEAD)" = "${TF_COMMIT}"
+
+WORKDIR /src/tensorflow
+RUN --mount=type=cache,target=/root/.cache/bazel,id=tf221-sm120-bazel \
+    --mount=type=cache,target=/root/.cache/pip,id=tf221-sm120-pip \
+    PATH="/opt/tf-build/bin:${PATH}" bazel build \
+        //tensorflow/tools/pip_package:wheel \
+        --repo_env=USE_PYWRAP_RULES=1 \
+        --repo_env=WHEEL_NAME=tensorflow \
+        --repo_env=TF_PYTHON_VERSION=3.12 \
+        --repo_env=HERMETIC_PYTHON_VERSION=3.12 \
+        --repo_env=ML_WHEEL_TYPE=release \
+        --repo_env=ML_WHEEL_VERSION_SUFFIX=+dflsm120 \
+        --repo_env=HERMETIC_CUDA_VERSION=12.8.1 \
+        --repo_env=HERMETIC_CUDNN_VERSION=9.8.0 \
+        --repo_env=HERMETIC_CUDA_COMPUTE_CAPABILITIES=sm_120,compute_120 \
+        --action_env=PYTHON_BIN_PATH=/opt/tf-build/bin/python \
+        --action_env=PYTHON_LIB_PATH=/opt/tf-build/lib/python3.12/site-packages \
+        --python_path=/opt/tf-build/bin/python \
+        --action_env=CLANG_CUDA_COMPILER_PATH=/usr/lib/llvm-${LLVM_VERSION}/bin/clang \
+        --action_env=LD_LIBRARY_PATH=/usr/local/cuda/lib64 \
+        --config=cuda_nvcc \
+        --config=cuda_wheel \
+        --config=opt \
+        --jobs="${TF_BUILD_JOBS}" \
+        '--local_ram_resources=HOST_RAM*.75' \
+        --verbose_failures \
+    && mkdir -p /tensorflow-wheel \
+    && cp bazel-bin/tensorflow/tools/pip_package/wheel_house/*.whl /tensorflow-wheel/
+
+COPY docker/verify_tensorflow_wheel.py /usr/local/bin/verify-tensorflow-wheel.py
+RUN tensorflow_wheel="$(find /tensorflow-wheel -name '*.whl' -print -quit)" \
+    && python3 /usr/local/bin/verify-tensorflow-wheel.py "${tensorflow_wheel}"
+
+FROM ubuntu:24.04@sha256:52df9b1ee71626e0088f7d400d5c6b5f7bb916f8f0c82b474289a4ece6cf3faf AS runtime
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PIP_NO_CACHE_DIR=1 \
+    TF_CPP_MIN_LOG_LEVEL=2 \
+    CUDA_CACHE_MAXSIZE=2147483647 \
+    DFL_REQUIRE_NATIVE_BLACKWELL=1 \
+    NVIDIA_VISIBLE_DEVICES=all \
+    NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ffmpeg libglib2.0-0 libgl1 python3 python3-pip python3-venv \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m venv /opt/dfl-venv
+ENV PATH="/opt/dfl-venv/bin:${PATH}"
+
+COPY --from=tensorflow-builder /tensorflow-wheel /tmp/tensorflow-wheel
+RUN tensorflow_wheel="$(find /tmp/tensorflow-wheel -name '*.whl' -print -quit)" \
+    && python -m pip install --upgrade pip setuptools wheel \
+    && python -m pip install "${tensorflow_wheel}[and-cuda]" \
+    && rm -rf /tmp/tensorflow-wheel
+
+WORKDIR /opt/DeepFaceLab
+COPY requirements-blackwell-container.txt ./
+RUN python -m pip install -r requirements-blackwell-container.txt
+
+COPY . .
+COPY docker/blackwell-entrypoint.sh /usr/local/bin/dfl-python
+RUN chmod +x /usr/local/bin/dfl-python \
+    && python -m compileall -q core facelib mainscripts merger models samplelib \
+        tests blackwell_support.py main.py verify_rtx5090.py \
+        verify_tensorflow_build.py verify_blackwell_training.py \
+    && /usr/local/bin/dfl-python verify_tensorflow_build.py
+
+ENTRYPOINT ["/usr/local/bin/dfl-python"]
+CMD ["verify_blackwell_training.py"]

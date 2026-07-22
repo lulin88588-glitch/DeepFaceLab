@@ -5,4 +5,14 @@
 !*.jpg
 !requirements*
 !Dockerfile*
+!.dockerignore
 !*.sh
+!*.yml
+!*.ps1
+!docker/
+!docker/*.sh
+!tests/
+!tests/*.py
+!.github/
+!.github/workflows/
+!.github/workflows/*.yml

@@ -1,0 +1,13 @@
+# Upstream TensorFlow compatibility lane (Linux / WSL2).
+tensorflow[and-cuda]==2.21.0
+numpy==1.26.4
+numexpr>=2.10,<3
+h5py>=3.11,<4
+opencv-python>=4.10,<4.11
+ffmpeg-python>=0.2,<1
+scikit-image>=0.22,<0.23
+scipy>=1.13,<1.14
+colorama>=0.4.6,<1
+tqdm>=4.66,<5
+pyqt5>=5.15.10,<6
+tf2onnx==1.17.0

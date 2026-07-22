@@ -1,8 +1,6 @@
 import numpy as np
 from core.leras import nn
 tf = nn.tf
-from tensorflow.python.ops import array_ops, random_ops, math_ops, sparse_ops, gradients
-from tensorflow.python.framework import sparse_tensor
 
 def tf_get_value(tensor):
     return nn.tf_sess.run (tensor)
@@ -52,7 +50,7 @@ def init_weights(weights):
 nn.init_weights = init_weights
 
 def tf_gradients ( loss, vars ):
-    grads = gradients.gradients(loss, vars, colocate_gradients_with_ops=True )
+    grads = tf.gradients(loss, vars, colocate_gradients_with_ops=True )
     gv = [*zip(grads,vars)]
     for g,v in gv:
         if g is None:
@@ -207,9 +205,9 @@ def random_binomial(shape, p=0.0, dtype=None, seed=None):
 
     if seed is None:
         seed = np.random.randint(10e6)
-    return array_ops.where(
-        random_ops.random_uniform(shape, dtype=tf.float16, seed=seed) < p,
-             array_ops.ones(shape, dtype=dtype), array_ops.zeros(shape, dtype=dtype))
+    return tf.where(
+        tf.random_uniform(shape, dtype=tf.float16, seed=seed) < p,
+        tf.ones(shape, dtype=dtype), tf.zeros(shape, dtype=dtype))
 nn.random_binomial = random_binomial
 
 def gaussian_blur(input, radius=2.0):

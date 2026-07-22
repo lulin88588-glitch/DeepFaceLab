@@ -1,5 +1,4 @@
 import numpy as np
-from tensorflow.python.ops import init_ops
 
 from core.leras import nn
 
@@ -8,7 +7,7 @@ tf = nn.tf
 from .CA import CAInitializerSubprocessor
 
 class initializers():
-    class ca (init_ops.Initializer):
+    class ca:
         def __call__(self, shape, dtype=None, partition_info=None):
             return tf.zeros( shape, dtype=dtype, name="_cai_")
 
