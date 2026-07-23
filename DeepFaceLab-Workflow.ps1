@@ -55,7 +55,9 @@ $T = @'
   "failed": "\u4efb\u52a1\u5931\u8d25\uff0c\u9000\u51fa\u4ee3\u7801",
   "videoMissing": "\u5de5\u4f5c\u533a\u4e2d\u672a\u627e\u5230\u5bf9\u5e94\u7684 data_src.* \u6216 data_dst.* \u89c6\u9891\u3002",
   "assetReady": "\u53c2\u8003\u5305\u6a21\u578b\u8d44\u6e90\u5df2\u51c6\u5907\u3002",
-  "openMain": "\u56de\u5230\u8bad\u7ec3\u63a7\u5236\u53f0"
+  "openMain": "\u56de\u5230\u8bad\u7ec3\u63a7\u5236\u53f0",
+  "aiAssistant": "AI \u52a9\u624b",
+  "aiTitle": "DeepFaceLab AI \u52a9\u624b"
 }
 '@ | ConvertFrom-Json
 
@@ -693,9 +695,15 @@ $taskPanel.Controls.Add($logBox)
 
 $mainButton = New-Object Windows.Forms.Button
 $mainButton.Text = $T.openMain
-$mainButton.SetBounds(20, 119, 400, 36)
+$mainButton.SetBounds(224, 119, 196, 36)
 Style-Button $mainButton $accent
 $taskPanel.Controls.Add($mainButton)
+
+$aiButton = New-Object Windows.Forms.Button
+$aiButton.Text = $T.aiAssistant
+$aiButton.SetBounds(20, 119, 194, 36)
+Style-Button $aiButton $surfaceRaised
+$taskPanel.Controls.Add($aiButton)
 
 function Resize-WorkflowLayout {
     $optionsPanel.Height = [Math]::Max(
@@ -1314,6 +1322,28 @@ $mainButton.Add_Click({
         Start-Process -FilePath 'powershell.exe' `
             -ArgumentList ('-NoLogo -NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File ' + (Quote-Arg $mainScript)) `
             -WorkingDirectory $repoRoot -WindowStyle Hidden | Out-Null
+    }
+})
+
+$aiButton.Add_Click({
+    $assistant = Get-Process -Name powershell -ErrorAction SilentlyContinue |
+        Where-Object { $_.MainWindowTitle -eq $T.aiTitle } |
+        Select-Object -First 1
+    if ($null -ne $assistant) {
+        [DflWorkflow.WindowTools]::ShowWindow(
+            $assistant.MainWindowHandle, 9) | Out-Null
+        [DflWorkflow.WindowTools]::SetForegroundWindow(
+            $assistant.MainWindowHandle) | Out-Null
+    }
+    else {
+        $assistantScript = Join-Path $repoRoot 'DeepFaceLab-AI.ps1'
+        if (Test-Path -LiteralPath $assistantScript) {
+            $arguments = '-NoLogo -NoProfile -STA -ExecutionPolicy Bypass -File ' +
+                         (Quote-Arg $assistantScript) +
+                         ' -Workspace ' + (Quote-Arg $workspaceBox.Text)
+            Start-Process -FilePath 'powershell.exe' -ArgumentList $arguments `
+                -WorkingDirectory $repoRoot -WindowStyle Normal | Out-Null
+        }
     }
 })
 

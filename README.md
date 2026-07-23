@@ -151,6 +151,7 @@ interaction use the proven native Windows tools.
 | Blackwell container | RTX 50-series training, extraction, XSeg processing, enhancement, and video jobs |
 | Training Console | Model selection, start/stop, GPU telemetry, logs, environment tools, and preview control |
 | Workflow Workbench | Material, SRC, DST, XSeg, training/export, and merge/output operations |
+| Local AI Assistant | Read-only material quality checks, training diagnosis, and RTX 5090-aware configuration guidance |
 | Native interactive runtime | Manual face extraction, XSeg editor, sorting prompts, DFM export, and interactive merger |
 | Windows preview window | Periodically refreshed training preview without relying on a WSLg copy-mode window |
 
@@ -195,6 +196,26 @@ instances.
    - Use **Show Preview** to restore the native preview window.
 
 5. Use **Open Workbench** for the complete material-to-output workflow.
+
+6. Use **AI Assistant** from either window for local diagnostics and guidance.
+
+### Local AI assistant
+
+`DeepFaceLab-AI.ps1` provides three focused actions:
+
+- **Check Current Workspace** samples SRC and DST aligned faces, including
+  `faceset.pak`, and reports image count, resolution, sharpness, exposure,
+  likely duplicates, and dataset balance.
+- **Analyze Training Status** combines the material report with model summaries,
+  the latest preview image, container state, and recent training logs.
+- **Generate Recommended Configuration** reads the local NVIDIA GPU and free
+  VRAM, then proposes a conservative SAEHD starting point. Existing model
+  structure is never changed automatically.
+
+All analysis runs locally through `dfl_ai_assistant.py` in the Blackwell
+container. Face images and logs are not uploaded, and the assistant only reads
+the workspace. Its recommendations are diagnostics rather than automatic file
+cleanup or unattended training changes.
 
 ### Workspace layout
 

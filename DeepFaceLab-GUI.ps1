@@ -20,6 +20,8 @@ $T = @'
   "cpu": "\u4ec5 CPU \u6a21\u5f0f",
   "workflow": "\u6253\u5f00\u5de5\u4f5c\u53f0",
   "workbenchTitle": "DeepFaceLab \u5de5\u4f5c\u53f0",
+  "aiAssistant": "AI \u52a9\u624b",
+  "aiTitle": "DeepFaceLab AI \u52a9\u624b",
   "start": "\u5f00\u59cb\u8bad\u7ec3",
   "stop": "\u4fdd\u5b58\u5e76\u505c\u6b62",
   "showPreview": "\u663e\u793a\u9884\u89c8",
@@ -433,6 +435,13 @@ $logTitle.Font = New-Object Drawing.Font('Microsoft YaHei UI', 13, [Drawing.Font
 $logTitle.SetBounds(20, 14, 300, 30)
 $logPanel.Controls.Add($logTitle)
 
+$aiButton = New-Object Windows.Forms.Button
+$aiButton.Text = $T.aiAssistant
+$aiButton.SetBounds(690, 12, 120, 34)
+$aiButton.Anchor = 'Top,Right'
+Style-Button $aiButton $accent
+$logPanel.Controls.Add($aiButton)
+
 $logBox = New-Object Windows.Forms.RichTextBox
 $logBox.ReadOnly = $true
 $logBox.BackColor = $background
@@ -600,6 +609,29 @@ $workflowButton.Add_Click({
                          ' -LegacyRoot ' + (Quote-Arg 'D:\DFL_RTX5000_series_2025')
             Start-Process -FilePath 'powershell.exe' -ArgumentList $arguments `
                 -WorkingDirectory $repoRoot -WindowStyle Hidden | Out-Null
+        }
+    }
+})
+
+$aiButton.Add_Click({
+    $assistant = Get-Process -Name powershell -ErrorAction SilentlyContinue |
+        Where-Object { $_.MainWindowTitle -eq $T.aiTitle } |
+        Select-Object -First 1
+    if ($null -ne $assistant) {
+        [DflGui.WindowTools]::ShowWindow($assistant.MainWindowHandle, 9) | Out-Null
+        [DflGui.WindowTools]::SetForegroundWindow(
+            $assistant.MainWindowHandle) | Out-Null
+    }
+    else {
+        $assistantScript = Join-Path $repoRoot 'DeepFaceLab-AI.ps1'
+        if (Test-Path -LiteralPath $assistantScript) {
+            $arguments = '-NoLogo -NoProfile -STA -ExecutionPolicy Bypass -File ' +
+                         (Quote-Arg $assistantScript) +
+                         ' -Workspace ' + (Quote-Arg $workspaceBox.Text) +
+                         ' -ModelType ' +
+                         (Quote-Arg ([string]$modelTypeBox.SelectedItem))
+            Start-Process -FilePath 'powershell.exe' -ArgumentList $arguments `
+                -WorkingDirectory $repoRoot -WindowStyle Normal | Out-Null
         }
     }
 })
