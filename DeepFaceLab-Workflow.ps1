@@ -430,23 +430,39 @@ $navLayout.BringToFront()
 
 $buttonList = New-Object Collections.Generic.List[Windows.Forms.Button]
 $navButtonList = New-Object Collections.Generic.List[Windows.Forms.Button]
-$groupPanelList = New-Object Collections.Generic.List[Windows.Forms.FlowLayoutPanel]
+$groupPanelList = New-Object Collections.Generic.List[Windows.Forms.TableLayoutPanel]
 $groupIndex = 0
 foreach ($group in $Groups) {
-    $flow = New-Object Windows.Forms.FlowLayoutPanel
-    $flow.Dock = 'Fill'
-    $flow.FlowDirection = 'LeftToRight'
-    $flow.WrapContents = $true
-    $flow.AutoScroll = $true
-    $flow.BackColor = $panel
-    $flow.Padding = New-Object Windows.Forms.Padding(14, 14, 10, 12)
-    $flow.Visible = $groupIndex -eq 0
-    $actionHost.Controls.Add($flow)
-    $groupPanelList.Add($flow)
+    $entries = @($Catalog | Where-Object { $_.group -eq $group.id })
+    $rowCount = [int][Math]::Ceiling($entries.Count / 2.0)
+
+    $grid = New-Object Windows.Forms.TableLayoutPanel
+    $grid.Dock = 'Fill'
+    $grid.ColumnCount = 2
+    $grid.RowCount = $rowCount + 1
+    $grid.GrowStyle = 'FixedSize'
+    $grid.AutoScroll = $true
+    $grid.BackColor = $panel
+    $grid.Padding = New-Object Windows.Forms.Padding(14, 14, 10, 12)
+    $grid.ColumnStyles.Clear()
+    [void]$grid.ColumnStyles.Add(
+        (New-Object Windows.Forms.ColumnStyle('Percent', 50)))
+    [void]$grid.ColumnStyles.Add(
+        (New-Object Windows.Forms.ColumnStyle('Percent', 50)))
+    $grid.RowStyles.Clear()
+    for ($row = 0; $row -lt $rowCount; $row++) {
+        [void]$grid.RowStyles.Add(
+            (New-Object Windows.Forms.RowStyle('Absolute', 64)))
+    }
+    [void]$grid.RowStyles.Add(
+        (New-Object Windows.Forms.RowStyle('Percent', 100)))
+    $grid.Visible = $groupIndex -eq 0
+    $actionHost.Controls.Add($grid)
+    $groupPanelList.Add($grid)
 
     $navButton = New-Object Windows.Forms.Button
     $navButton.Text = $group.label
-    $navButton.Tag = $flow
+    $navButton.Tag = $grid
     $navButton.Dock = 'Fill'
     $navButton.Margin = New-Object Windows.Forms.Padding(3, 2, 3, 2)
     $navButton.FlatStyle = 'Flat'
@@ -477,20 +493,24 @@ foreach ($group in $Groups) {
     $navLayout.Controls.Add($navButton, $groupIndex, 0)
     $navButtonList.Add($navButton)
 
-    foreach ($entry in @($Catalog | Where-Object { $_.group -eq $group.id })) {
+    $actionIndex = 0
+    foreach ($entry in $entries) {
         $button = New-Object Windows.Forms.Button
         $button.Text = Get-ActionCaption $entry
         $button.Tag = [string]$entry.id
         $button.Margin = New-Object Windows.Forms.Padding(6, 5, 6, 5)
-        $button.Size = New-Object Drawing.Size(430, 54)
+        $button.Dock = 'Fill'
         $isDanger = $entry.PSObject.Properties.Name -contains 'danger'
         Style-ActionButton $button $isDanger
         $button.Add_Click({
             param($sender, $eventArgs)
             Invoke-WorkflowAction ([string]$sender.Tag)
         })
-        $flow.Controls.Add($button)
+        $column = $actionIndex % 2
+        $row = [Math]::Floor($actionIndex / 2)
+        $grid.Controls.Add($button, $column, $row)
         $buttonList.Add($button)
+        $actionIndex++
     }
     $groupIndex++
 }
@@ -678,11 +698,6 @@ Style-Button $mainButton $accent
 $taskPanel.Controls.Add($mainButton)
 
 function Resize-WorkflowLayout {
-    $buttonWidth = [Math]::Max(
-        300, [Math]::Floor(($actionHost.ClientSize.Width - 54) / 2))
-    foreach ($button in $buttonList) {
-        $button.Width = $buttonWidth
-    }
     $optionsPanel.Height = [Math]::Max(
         456, $taskPanel.Top - $optionsPanel.Top - 12)
 }
