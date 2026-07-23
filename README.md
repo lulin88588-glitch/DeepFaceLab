@@ -170,8 +170,9 @@ merge/output operations. Batch and GPU-heavy jobs use the maintained Blackwell
 container. Operations that require a visible mouse-driven window (manual face
 extraction, XSeg editing, sorting prompts, DFM export, and interactive merging)
 use the native runtime from `D:\DFL_RTX5000_series_2025` while operating on the
-selected workspace. The reference runtime path is configurable in the toolbox.
-Destructive actions are marked red and require confirmation.
+selected workspace. The toolbox detects that reference runtime internally, so
+the implementation path does not clutter the normal interface. Destructive
+actions are marked red and require confirmation.
 
 To install both WSL2/Ubuntu and Docker Desktop automatically, run the following
 from an Administrator PowerShell and restart Windows if requested:

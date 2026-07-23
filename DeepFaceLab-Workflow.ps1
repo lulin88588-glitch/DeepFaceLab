@@ -250,6 +250,7 @@ $repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 if ([string]::IsNullOrWhiteSpace($Workspace)) {
     $Workspace = Join-Path $repoRoot 'workspace'
 }
+$script:legacyRoot = [IO.Path]::GetFullPath($LegacyRoot)
 $composeFile = Join-Path $repoRoot 'compose.blackwell.yml'
 $nativeLauncher = Join-Path $repoRoot 'run_native_interactive.cmd'
 $containerName = 'dfl-blackwell-trainer'
@@ -321,29 +322,14 @@ $workspaceBox.Text = [IO.Path]::GetFullPath($Workspace)
 $workspaceBox.BackColor = $input
 $workspaceBox.ForeColor = $text
 $workspaceBox.BorderStyle = 'FixedSingle'
-$workspaceBox.SetBounds(110, 75, 455, 27)
+$workspaceBox.SetBounds(110, 75, 1105, 27)
 $form.Controls.Add($workspaceBox)
 
 $workspaceBrowse = New-Object Windows.Forms.Button
 $workspaceBrowse.Text = $T.browse
-$workspaceBrowse.SetBounds(575, 73, 80, 31)
+$workspaceBrowse.SetBounds(1225, 73, 90, 31)
 Style-Button $workspaceBrowse $border
 $form.Controls.Add($workspaceBrowse)
-
-Add-ControlLabel $form $T.legacy 78 115 665 | Out-Null
-$legacyBox = New-Object Windows.Forms.TextBox
-$legacyBox.Text = $LegacyRoot
-$legacyBox.BackColor = $input
-$legacyBox.ForeColor = $text
-$legacyBox.BorderStyle = 'FixedSingle'
-$legacyBox.SetBounds(770, 75, 455, 27)
-$form.Controls.Add($legacyBox)
-
-$legacyBrowse = New-Object Windows.Forms.Button
-$legacyBrowse.Text = $T.browse
-$legacyBrowse.SetBounds(1235, 73, 80, 31)
-Style-Button $legacyBrowse $border
-$form.Controls.Add($legacyBrowse)
 
 $tabs = New-Object Windows.Forms.TabControl
 $tabs.SetBounds(20, 120, 950, 680)
@@ -618,8 +604,6 @@ function Set-ButtonsEnabled([bool] $Enabled) {
     foreach ($button in $buttonList) { $button.Enabled = $Enabled }
     $workspaceBox.Enabled = $Enabled
     $workspaceBrowse.Enabled = $Enabled
-    $legacyBox.Enabled = $Enabled
-    $legacyBrowse.Enabled = $Enabled
 }
 
 function New-BatchCommand([string] $PythonArguments) {
@@ -668,7 +652,7 @@ function Start-NativeDfl([string] $Name, [string] $Arguments) {
         [Windows.Forms.MessageBox]::Show($T.invalidWorkspace, $T.title, 'OK', 'Warning') | Out-Null
         return
     }
-    $legacyInternal = Join-Path $legacyBox.Text '_internal'
+    $legacyInternal = Join-Path $script:legacyRoot '_internal'
     if (-not (Test-Path -LiteralPath (Join-Path $legacyInternal 'setenv.bat'))) {
         [Windows.Forms.MessageBox]::Show($T.legacyMissing, $T.title, 'OK', 'Warning') | Out-Null
         return
@@ -755,7 +739,7 @@ function Start-Viewer([string] $Path) {
         [Windows.Forms.MessageBox]::Show($Path, $T.title, 'OK', 'Warning') | Out-Null
         return
     }
-    $viewer = Join-Path $legacyBox.Text '_internal\XnViewMP\xnviewmp.exe'
+    $viewer = Join-Path $script:legacyRoot '_internal\XnViewMP\xnviewmp.exe'
     if (Test-Path -LiteralPath $viewer) {
         Start-Process -FilePath $viewer -ArgumentList (Quote-Arg $Path) `
             -WorkingDirectory (Split-Path -Parent $viewer) -WindowStyle Normal | Out-Null
@@ -766,7 +750,7 @@ function Start-Viewer([string] $Path) {
 }
 
 function Ensure-LegacyAssets {
-    $legacyInternal = Join-Path $legacyBox.Text '_internal'
+    $legacyInternal = Join-Path $script:legacyRoot '_internal'
     if (-not (Test-Path -LiteralPath $legacyInternal)) {
         throw $T.legacyMissing
     }
@@ -904,8 +888,8 @@ function Invoke-WorkflowAction([string] $Id) {
         switch ($Id) {
             'clear-workspace' { Clear-Workspace }
             'start-ebsynth' {
-                $exe = Join-Path $legacyBox.Text '_internal\EbSynth\EbSynth.exe'
-                $project = Join-Path $legacyBox.Text '_internal\EbSynth\SampleProject\sample.ebs'
+                $exe = Join-Path $script:legacyRoot '_internal\EbSynth\EbSynth.exe'
+                $project = Join-Path $script:legacyRoot '_internal\EbSynth\SampleProject\sample.ebs'
                 if (-not (Test-Path -LiteralPath $exe)) { throw $T.legacyMissing }
                 Start-Process -FilePath $exe -ArgumentList (Quote-Arg $project) `
                     -WorkingDirectory (Split-Path -Parent $exe) -WindowStyle Normal | Out-Null
@@ -1140,14 +1124,6 @@ $workspaceBrowse.Add_Click({
     $dialog.Description = $T.workspace
     $dialog.SelectedPath = $workspaceBox.Text
     if ($dialog.ShowDialog($form) -eq 'OK') { $workspaceBox.Text = $dialog.SelectedPath }
-    $dialog.Dispose()
-})
-
-$legacyBrowse.Add_Click({
-    $dialog = New-Object Windows.Forms.FolderBrowserDialog
-    $dialog.Description = $T.legacy
-    $dialog.SelectedPath = $legacyBox.Text
-    if ($dialog.ShowDialog($form) -eq 'OK') { $legacyBox.Text = $dialog.SelectedPath }
     $dialog.Dispose()
 })
 
