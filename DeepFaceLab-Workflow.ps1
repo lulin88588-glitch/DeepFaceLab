@@ -12,12 +12,18 @@ Add-Type -AssemblyName System.Drawing
 # Keep this source file ASCII so Windows PowerShell 5.1 decodes it reliably.
 $T = @'
 {
-  "title": "DeepFaceLab \u5b8c\u6574\u5de5\u4f5c\u6d41",
-  "subtitle": "57 \u4e2a\u65e7\u7248\u547d\u4ee4\u5165\u53e3 \u00b7 RTX 5090 \u6279\u5904\u7406 \u00b7 Windows \u539f\u751f\u4ea4\u4e92\u7a97\u53e3",
+  "title": "DeepFaceLab \u5de5\u4f5c\u53f0",
   "workspace": "\u5de5\u4f5c\u533a",
   "legacy": "\u53c2\u8003\u5305\u8def\u5f84",
   "browse": "\u6d4f\u89c8\u2026",
-  "options": "\u5e38\u7528\u53c2\u6570",
+  "openWorkspace": "\u6253\u5f00\u5de5\u4f5c\u533a",
+  "ebsynth": "\u542f\u52a8 EbSynth",
+  "extractSrcFrames": "\u63d0\u53d6 SRC \u89c6\u9891\u5e27",
+  "extractDstFrames": "\u63d0\u53d6 DST \u89c6\u9891\u5e27\uff08\u5168\u5e27\u7387\uff09",
+  "denoiseDst": "\u964d\u566a DST \u56fe\u50cf",
+  "options": "\u53c2\u6570\u8bbe\u7f6e",
+  "operations": "\u5de5\u4f5c\u6d41",
+  "taskStatus": "\u4efb\u52a1\u72b6\u6001",
   "cpu": "\u4ec5 CPU \u6a21\u5f0f",
   "debug": "\u751f\u6210 aligned_debug",
   "merge": "\u5904\u7406\u540e\u5408\u5e76\u56de\u539f\u76ee\u5f55",
@@ -55,12 +61,12 @@ $T = @'
 
 $Groups = @'
 [
-  {"id":"workspace","label":"\u5de5\u4f5c\u533a / \u89c6\u9891\uff087\uff09"},
-  {"id":"src","label":"SRC \u5904\u7406\uff0813\uff09"},
-  {"id":"dst","label":"DST \u5904\u7406\uff0811\uff09"},
-  {"id":"xseg","label":"XSeg \u906e\u7f69\uff0813\uff09"},
-  {"id":"train","label":"\u8bad\u7ec3 / \u5bfc\u51fa\uff086\uff09"},
-  {"id":"merge","label":"\u5408\u6210 / \u8f93\u51fa\uff087\uff09"}
+  {"id":"workspace","label":"\u7d20\u6750\u51c6\u5907"},
+  {"id":"src","label":"SRC \u4eba\u8138"},
+  {"id":"dst","label":"DST \u4eba\u8138"},
+  {"id":"xseg","label":"XSeg \u906e\u7f69"},
+  {"id":"train","label":"\u6a21\u578b\u8bad\u7ec3"},
+  {"id":"merge","label":"\u5408\u6210\u8f93\u51fa"}
 ]
 '@ | ConvertFrom-Json
 
@@ -269,7 +275,7 @@ function Quote-Arg([string] $Value) {
 function Add-ControlLabel($Parent, [string] $Caption, [int] $Y, [int] $Width = 380, [int] $X = 16) {
     $label = New-Object Windows.Forms.Label
     $label.Text = $Caption
-    $label.ForeColor = [Drawing.Color]::FromArgb(155, 163, 179)
+    $label.ForeColor = $muted
     $label.SetBounds($X, $Y, $Width, 21)
     $Parent.Controls.Add($label)
     return $label
@@ -278,89 +284,207 @@ function Add-ControlLabel($Parent, [string] $Caption, [int] $Y, [int] $Width = 3
 function Style-Button($Button, [Drawing.Color] $Color) {
     $Button.FlatStyle = 'Flat'
     $Button.FlatAppearance.BorderSize = 0
+    $Button.FlatAppearance.MouseOverBackColor = [Drawing.Color]::FromArgb(69, 128, 226)
+    $Button.FlatAppearance.MouseDownBackColor = [Drawing.Color]::FromArgb(55, 107, 195)
     $Button.BackColor = $Color
     $Button.ForeColor = [Drawing.Color]::White
     $Button.Cursor = 'Hand'
     $Button.Font = New-Object Drawing.Font('Microsoft YaHei UI', 9, [Drawing.FontStyle]::Bold)
+    $Button.UseVisualStyleBackColor = $false
 }
 
-$background = [Drawing.Color]::FromArgb(18, 20, 25)
-$panel = [Drawing.Color]::FromArgb(28, 31, 38)
-$input = [Drawing.Color]::FromArgb(38, 42, 51)
-$text = [Drawing.Color]::FromArgb(235, 238, 243)
-$muted = [Drawing.Color]::FromArgb(150, 158, 174)
-$accent = [Drawing.Color]::FromArgb(41, 196, 132)
-$danger = [Drawing.Color]::FromArgb(231, 89, 99)
-$border = [Drawing.Color]::FromArgb(58, 63, 74)
+function Style-ActionButton($Button, [bool] $IsDanger) {
+    $Button.FlatStyle = 'Flat'
+    $Button.FlatAppearance.BorderSize = 1
+    $Button.Cursor = 'Hand'
+    $Button.Font = New-Object Drawing.Font('Microsoft YaHei UI', 10, [Drawing.FontStyle]::Bold)
+    $Button.TextAlign = 'MiddleLeft'
+    $Button.Padding = New-Object Windows.Forms.Padding(16, 0, 12, 0)
+    $Button.UseVisualStyleBackColor = $false
+    if ($IsDanger) {
+        $Button.BackColor = $dangerSurface
+        $Button.ForeColor = $dangerText
+        $Button.FlatAppearance.BorderColor = $dangerBorder
+        $Button.FlatAppearance.MouseOverBackColor = [Drawing.Color]::FromArgb(78, 39, 49)
+        $Button.FlatAppearance.MouseDownBackColor = [Drawing.Color]::FromArgb(94, 42, 53)
+    }
+    else {
+        $Button.BackColor = $surfaceRaised
+        $Button.ForeColor = $text
+        $Button.FlatAppearance.BorderColor = $border
+        $Button.FlatAppearance.MouseOverBackColor = [Drawing.Color]::FromArgb(37, 49, 65)
+        $Button.FlatAppearance.MouseDownBackColor = [Drawing.Color]::FromArgb(43, 61, 84)
+    }
+}
+
+function Get-ActionCaption($Entry) {
+    switch ([string]$Entry.id) {
+        'start-ebsynth' { return $T.ebsynth }
+        'video-src' { return $T.extractSrcFrames }
+        'video-dst' { return $T.extractDstFrames }
+        'video-denoise' { return $T.denoiseDst }
+    }
+    $caption = [string]$Entry.label
+    $caption = [Text.RegularExpressions.Regex]::Replace(
+        $caption, '^[0-9A-Za-z.]+\)\s*', '')
+    $caption = [Text.RegularExpressions.Regex]::Replace(
+        $caption, '\s{2,}.*$', '')
+    $caption = [Text.RegularExpressions.Regex]::Replace(
+        $caption, '\bsrc\b', 'SRC', [Text.RegularExpressions.RegexOptions]::IgnoreCase)
+    $caption = [Text.RegularExpressions.Regex]::Replace(
+        $caption, '\bdst\b', 'DST', [Text.RegularExpressions.RegexOptions]::IgnoreCase)
+    return $caption
+}
+
+$background = [Drawing.Color]::FromArgb(11, 15, 20)
+$surface = [Drawing.Color]::FromArgb(20, 26, 34)
+$panel = [Drawing.Color]::FromArgb(23, 30, 40)
+$surfaceRaised = [Drawing.Color]::FromArgb(28, 37, 50)
+$input = [Drawing.Color]::FromArgb(29, 38, 50)
+$text = [Drawing.Color]::FromArgb(242, 245, 249)
+$muted = [Drawing.Color]::FromArgb(143, 157, 177)
+$accent = [Drawing.Color]::FromArgb(75, 141, 248)
+$success = [Drawing.Color]::FromArgb(55, 211, 153)
+$danger = [Drawing.Color]::FromArgb(240, 82, 98)
+$dangerSurface = [Drawing.Color]::FromArgb(55, 30, 38)
+$dangerText = [Drawing.Color]::FromArgb(255, 191, 199)
+$dangerBorder = [Drawing.Color]::FromArgb(119, 52, 65)
+$border = [Drawing.Color]::FromArgb(43, 55, 72)
 
 $form = New-Object Windows.Forms.Form
 $form.Text = $T.title
 $form.ClientSize = New-Object Drawing.Size(1450, 850)
-$form.MinimumSize = New-Object Drawing.Size(1180, 720)
+$form.MinimumSize = New-Object Drawing.Size(1280, 860)
 $form.StartPosition = 'CenterScreen'
 $form.BackColor = $background
 $form.ForeColor = $text
 $form.Font = New-Object Drawing.Font('Microsoft YaHei UI', 9)
 $form.AutoScaleMode = 'Dpi'
+$form.SuspendLayout()
 
 $title = New-Object Windows.Forms.Label
 $title.Text = $T.title
-$title.Font = New-Object Drawing.Font('Microsoft YaHei UI', 20, [Drawing.FontStyle]::Bold)
+$title.Font = New-Object Drawing.Font('Microsoft YaHei UI', 21, [Drawing.FontStyle]::Bold)
 $title.ForeColor = $text
-$title.SetBounds(22, 14, 700, 39)
+$title.SetBounds(24, 14, 700, 42)
 $form.Controls.Add($title)
 
-$subtitle = New-Object Windows.Forms.Label
-$subtitle.Text = $T.subtitle
-$subtitle.ForeColor = $muted
-$subtitle.SetBounds(25, 52, 850, 24)
-$form.Controls.Add($subtitle)
+$workspacePanel = New-Object Windows.Forms.Panel
+$workspacePanel.BackColor = $surface
+$workspacePanel.SetBounds(20, 66, 1410, 60)
+$workspacePanel.Anchor = 'Top,Left,Right'
+$form.Controls.Add($workspacePanel)
 
-Add-ControlLabel $form $T.workspace 78 90 | Out-Null
+Add-ControlLabel $workspacePanel $T.workspace 20 76 16 | Out-Null
 $workspaceBox = New-Object Windows.Forms.TextBox
 $workspaceBox.Text = [IO.Path]::GetFullPath($Workspace)
 $workspaceBox.BackColor = $input
 $workspaceBox.ForeColor = $text
 $workspaceBox.BorderStyle = 'FixedSingle'
-$workspaceBox.SetBounds(110, 75, 1105, 27)
-$form.Controls.Add($workspaceBox)
+$workspaceBox.SetBounds(92, 16, 1086, 29)
+$workspaceBox.Anchor = 'Top,Left,Right'
+$workspacePanel.Controls.Add($workspaceBox)
 
 $workspaceBrowse = New-Object Windows.Forms.Button
 $workspaceBrowse.Text = $T.browse
-$workspaceBrowse.SetBounds(1225, 73, 90, 31)
+$workspaceBrowse.SetBounds(1188, 14, 88, 33)
+$workspaceBrowse.Anchor = 'Top,Right'
 Style-Button $workspaceBrowse $border
-$form.Controls.Add($workspaceBrowse)
+$workspacePanel.Controls.Add($workspaceBrowse)
 
-$tabs = New-Object Windows.Forms.TabControl
-$tabs.SetBounds(20, 120, 950, 680)
-$tabs.Anchor = 'Top,Bottom,Left,Right'
-$tabs.Font = New-Object Drawing.Font('Microsoft YaHei UI', 10, [Drawing.FontStyle]::Bold)
-$form.Controls.Add($tabs)
+$workspaceOpen = New-Object Windows.Forms.Button
+$workspaceOpen.Text = $T.openWorkspace
+$workspaceOpen.SetBounds(1286, 14, 108, 33)
+$workspaceOpen.Anchor = 'Top,Right'
+Style-Button $workspaceOpen $accent
+$workspacePanel.Controls.Add($workspaceOpen)
+
+$operationsPanel = New-Object Windows.Forms.Panel
+$operationsPanel.BackColor = $panel
+$operationsPanel.SetBounds(20, 142, 950, 684)
+$operationsPanel.Anchor = 'Top,Bottom,Left,Right'
+$form.Controls.Add($operationsPanel)
+
+$navLayout = New-Object Windows.Forms.TableLayoutPanel
+$navLayout.BackColor = $surface
+$navLayout.Dock = 'Top'
+$navLayout.Height = 48
+$navLayout.ColumnCount = 6
+$navLayout.RowCount = 1
+$navLayout.Padding = New-Object Windows.Forms.Padding(4, 4, 4, 4)
+for ($column = 0; $column -lt 6; $column++) {
+    [void]$navLayout.ColumnStyles.Add(
+        (New-Object Windows.Forms.ColumnStyle('Percent', 16.6667)))
+}
+[void]$navLayout.RowStyles.Add(
+    (New-Object Windows.Forms.RowStyle('Percent', 100)))
+$operationsPanel.Controls.Add($navLayout)
+
+$actionHost = New-Object Windows.Forms.Panel
+$actionHost.BackColor = $panel
+$actionHost.Dock = 'Fill'
+$actionHost.Padding = New-Object Windows.Forms.Padding(0, 48, 0, 0)
+$operationsPanel.Controls.Add($actionHost)
+$actionHost.BringToFront()
+$navLayout.BringToFront()
 
 $buttonList = New-Object Collections.Generic.List[Windows.Forms.Button]
+$navButtonList = New-Object Collections.Generic.List[Windows.Forms.Button]
+$groupPanelList = New-Object Collections.Generic.List[Windows.Forms.FlowLayoutPanel]
+$groupIndex = 0
 foreach ($group in $Groups) {
-    $page = New-Object Windows.Forms.TabPage
-    $page.Text = $group.label
-    $page.Name = [string]$group.id
-    $page.BackColor = $panel
-
     $flow = New-Object Windows.Forms.FlowLayoutPanel
     $flow.Dock = 'Fill'
-    $flow.FlowDirection = 'TopDown'
+    $flow.FlowDirection = 'LeftToRight'
     $flow.WrapContents = $true
     $flow.AutoScroll = $true
-    $flow.Padding = New-Object Windows.Forms.Padding(12)
-    $page.Controls.Add($flow)
+    $flow.BackColor = $panel
+    $flow.Padding = New-Object Windows.Forms.Padding(14, 14, 10, 12)
+    $flow.Visible = $groupIndex -eq 0
+    $actionHost.Controls.Add($flow)
+    $groupPanelList.Add($flow)
+
+    $navButton = New-Object Windows.Forms.Button
+    $navButton.Text = $group.label
+    $navButton.Tag = $flow
+    $navButton.Dock = 'Fill'
+    $navButton.Margin = New-Object Windows.Forms.Padding(3, 2, 3, 2)
+    $navButton.FlatStyle = 'Flat'
+    $navButton.FlatAppearance.BorderSize = 0
+    $navButton.FlatAppearance.MouseOverBackColor = [Drawing.Color]::FromArgb(34, 45, 60)
+    $navButton.FlatAppearance.MouseDownBackColor = [Drawing.Color]::FromArgb(55, 107, 195)
+    $navButton.BackColor = if ($groupIndex -eq 0) { $accent } else { $surface }
+    $navButton.ForeColor = if ($groupIndex -eq 0) { [Drawing.Color]::White } else { $muted }
+    $navButton.Cursor = 'Hand'
+    $navButton.Font = New-Object Drawing.Font('Microsoft YaHei UI', 9, [Drawing.FontStyle]::Bold)
+    $navButton.UseVisualStyleBackColor = $false
+    $navButton.Add_Click({
+        param($sender, $eventArgs)
+        foreach ($item in $navButtonList) {
+            $item.BackColor = $surface
+            $item.ForeColor = $muted
+            $item.FlatAppearance.MouseOverBackColor = [Drawing.Color]::FromArgb(34, 45, 60)
+        }
+        foreach ($view in $groupPanelList) {
+            $view.Visible = $false
+        }
+        $sender.BackColor = $accent
+        $sender.ForeColor = [Drawing.Color]::White
+        $sender.FlatAppearance.MouseOverBackColor = [Drawing.Color]::FromArgb(84, 151, 255)
+        $sender.Tag.Visible = $true
+        $sender.Tag.BringToFront()
+    })
+    $navLayout.Controls.Add($navButton, $groupIndex, 0)
+    $navButtonList.Add($navButton)
 
     foreach ($entry in @($Catalog | Where-Object { $_.group -eq $group.id })) {
         $button = New-Object Windows.Forms.Button
-        $button.Text = $entry.label
+        $button.Text = Get-ActionCaption $entry
         $button.Tag = [string]$entry.id
-        $button.TextAlign = 'MiddleLeft'
-        $button.Margin = New-Object Windows.Forms.Padding(6)
-        $button.Size = New-Object Drawing.Size(435, 45)
+        $button.Margin = New-Object Windows.Forms.Padding(6, 5, 6, 5)
+        $button.Size = New-Object Drawing.Size(430, 54)
         $isDanger = $entry.PSObject.Properties.Name -contains 'danger'
-        Style-Button $button $(if ($isDanger) { $danger } else { $border })
+        Style-ActionButton $button $isDanger
         $button.Add_Click({
             param($sender, $eventArgs)
             Invoke-WorkflowAction ([string]$sender.Tag)
@@ -368,43 +492,42 @@ foreach ($group in $Groups) {
         $flow.Controls.Add($button)
         $buttonList.Add($button)
     }
-    $tabs.TabPages.Add($page)
+    $groupIndex++
 }
 
 $optionsPanel = New-Object Windows.Forms.Panel
-$optionsPanel.BackColor = $panel
-$optionsPanel.SetBounds(990, 120, 430, 680)
-$optionsPanel.Anchor = 'Top,Bottom,Right'
-$optionsPanel.AutoScroll = $true
+$optionsPanel.BackColor = $surface
+$optionsPanel.SetBounds(990, 142, 440, 500)
+$optionsPanel.Anchor = 'Top,Right'
 $form.Controls.Add($optionsPanel)
 
 $optionsTitle = New-Object Windows.Forms.Label
 $optionsTitle.Text = $T.options
-$optionsTitle.Font = New-Object Drawing.Font('Microsoft YaHei UI', 12, [Drawing.FontStyle]::Bold)
-$optionsTitle.SetBounds(16, 12, 300, 28)
+$optionsTitle.Font = New-Object Drawing.Font('Microsoft YaHei UI', 13, [Drawing.FontStyle]::Bold)
+$optionsTitle.SetBounds(20, 14, 300, 30)
 $optionsPanel.Controls.Add($optionsTitle)
 
 $cpuOnlyCheck = New-Object Windows.Forms.CheckBox
 $cpuOnlyCheck.Text = $T.cpu
 $cpuOnlyCheck.ForeColor = $text
-$cpuOnlyCheck.SetBounds(16, 47, 180, 25)
+$cpuOnlyCheck.SetBounds(20, 48, 180, 25)
 $optionsPanel.Controls.Add($cpuOnlyCheck)
 
 $debugCheck = New-Object Windows.Forms.CheckBox
 $debugCheck.Text = $T.debug
 $debugCheck.Checked = $true
 $debugCheck.ForeColor = $text
-$debugCheck.SetBounds(210, 47, 200, 25)
+$debugCheck.SetBounds(220, 48, 200, 25)
 $optionsPanel.Controls.Add($debugCheck)
 
 $mergeCheck = New-Object Windows.Forms.CheckBox
 $mergeCheck.Text = $T.merge
 $mergeCheck.Checked = $true
 $mergeCheck.ForeColor = $text
-$mergeCheck.SetBounds(16, 76, 390, 25)
+$mergeCheck.SetBounds(20, 76, 400, 25)
 $optionsPanel.Controls.Add($mergeCheck)
 
-Add-ControlLabel $optionsPanel $T.faceType 108 180 | Out-Null
+Add-ControlLabel $optionsPanel $T.faceType 112 180 20 | Out-Null
 $faceTypeBox = New-Object Windows.Forms.ComboBox
 $faceTypeBox.DropDownStyle = 'DropDownList'
 $faceTypeBox.Items.AddRange(@('whole_face', 'full_face', 'head', 'half_face', 'mid_full'))
@@ -412,10 +535,10 @@ $faceTypeBox.SelectedIndex = 0
 $faceTypeBox.BackColor = $input
 $faceTypeBox.ForeColor = $text
 $faceTypeBox.FlatStyle = 'Flat'
-$faceTypeBox.SetBounds(16, 132, 182, 28)
+$faceTypeBox.SetBounds(20, 134, 190, 28)
 $optionsPanel.Controls.Add($faceTypeBox)
 
-Add-ControlLabel $optionsPanel $T.imageSize 108 180 214 | Out-Null
+Add-ControlLabel $optionsPanel $T.imageSize 112 180 230 | Out-Null
 $imageSizeBox = New-Object Windows.Forms.NumericUpDown
 $imageSizeBox.Minimum = 256
 $imageSizeBox.Maximum = 2048
@@ -423,30 +546,30 @@ $imageSizeBox.Increment = 32
 $imageSizeBox.Value = 512
 $imageSizeBox.BackColor = $input
 $imageSizeBox.ForeColor = $text
-$imageSizeBox.SetBounds(214, 132, 182, 28)
+$imageSizeBox.SetBounds(230, 134, 190, 28)
 $optionsPanel.Controls.Add($imageSizeBox)
 
-Add-ControlLabel $optionsPanel $T.jpeg 168 180 | Out-Null
+Add-ControlLabel $optionsPanel $T.jpeg 168 180 20 | Out-Null
 $jpegBox = New-Object Windows.Forms.NumericUpDown
 $jpegBox.Minimum = 1
 $jpegBox.Maximum = 100
 $jpegBox.Value = 90
 $jpegBox.BackColor = $input
 $jpegBox.ForeColor = $text
-$jpegBox.SetBounds(16, 192, 182, 28)
+$jpegBox.SetBounds(20, 190, 190, 28)
 $optionsPanel.Controls.Add($jpegBox)
 
-Add-ControlLabel $optionsPanel $T.maxFaces 168 200 214 | Out-Null
+Add-ControlLabel $optionsPanel $T.maxFaces 168 200 230 | Out-Null
 $maxFacesBox = New-Object Windows.Forms.NumericUpDown
 $maxFacesBox.Minimum = 0
 $maxFacesBox.Maximum = 100
 $maxFacesBox.Value = 0
 $maxFacesBox.BackColor = $input
 $maxFacesBox.ForeColor = $text
-$maxFacesBox.SetBounds(214, 192, 182, 28)
+$maxFacesBox.SetBounds(230, 190, 190, 28)
 $optionsPanel.Controls.Add($maxFacesBox)
 
-Add-ControlLabel $optionsPanel $T.format 228 180 | Out-Null
+Add-ControlLabel $optionsPanel $T.format 224 180 20 | Out-Null
 $formatBox = New-Object Windows.Forms.ComboBox
 $formatBox.DropDownStyle = 'DropDownList'
 $formatBox.Items.AddRange(@('png', 'jpg'))
@@ -454,20 +577,20 @@ $formatBox.SelectedIndex = 0
 $formatBox.BackColor = $input
 $formatBox.ForeColor = $text
 $formatBox.FlatStyle = 'Flat'
-$formatBox.SetBounds(16, 252, 182, 28)
+$formatBox.SetBounds(20, 246, 190, 28)
 $optionsPanel.Controls.Add($formatBox)
 
-Add-ControlLabel $optionsPanel $T.fps 228 200 214 | Out-Null
+Add-ControlLabel $optionsPanel $T.fps 224 200 230 | Out-Null
 $fpsBox = New-Object Windows.Forms.NumericUpDown
 $fpsBox.Minimum = 0
 $fpsBox.Maximum = 240
 $fpsBox.Value = 0
 $fpsBox.BackColor = $input
 $fpsBox.ForeColor = $text
-$fpsBox.SetBounds(214, 252, 182, 28)
+$fpsBox.SetBounds(230, 246, 190, 28)
 $optionsPanel.Controls.Add($fpsBox)
 
-Add-ControlLabel $optionsPanel $T.sort 288 380 | Out-Null
+Add-ControlLabel $optionsPanel $T.sort 280 400 20 | Out-Null
 $sortBox = New-Object Windows.Forms.ComboBox
 $sortBox.DropDownStyle = 'DropDownList'
 $sortBox.Items.AddRange(@('hist', 'blur', 'motion-blur', 'face-yaw', 'face-pitch',
@@ -477,38 +600,38 @@ $sortBox.SelectedIndex = 0
 $sortBox.BackColor = $input
 $sortBox.ForeColor = $text
 $sortBox.FlatStyle = 'Flat'
-$sortBox.SetBounds(16, 312, 380, 28)
+$sortBox.SetBounds(20, 302, 400, 28)
 $optionsPanel.Controls.Add($sortBox)
 
-Add-ControlLabel $optionsPanel $T.denoise 348 180 | Out-Null
+Add-ControlLabel $optionsPanel $T.denoise 336 180 20 | Out-Null
 $denoiseBox = New-Object Windows.Forms.NumericUpDown
 $denoiseBox.Minimum = 1
 $denoiseBox.Maximum = 20
 $denoiseBox.Value = 7
 $denoiseBox.BackColor = $input
 $denoiseBox.ForeColor = $text
-$denoiseBox.SetBounds(16, 372, 182, 28)
+$denoiseBox.SetBounds(20, 358, 190, 28)
 $optionsPanel.Controls.Add($denoiseBox)
 
-Add-ControlLabel $optionsPanel $T.bitrate 348 180 214 | Out-Null
+Add-ControlLabel $optionsPanel $T.bitrate 336 180 230 | Out-Null
 $bitrateBox = New-Object Windows.Forms.NumericUpDown
 $bitrateBox.Minimum = 1
 $bitrateBox.Maximum = 500
 $bitrateBox.Value = 16
 $bitrateBox.BackColor = $input
 $bitrateBox.ForeColor = $text
-$bitrateBox.SetBounds(214, 372, 182, 28)
+$bitrateBox.SetBounds(230, 358, 190, 28)
 $optionsPanel.Controls.Add($bitrateBox)
 
-Add-ControlLabel $optionsPanel $T.modelName 408 380 | Out-Null
+Add-ControlLabel $optionsPanel $T.modelName 392 190 20 | Out-Null
 $modelNameBox = New-Object Windows.Forms.TextBox
 $modelNameBox.BackColor = $input
 $modelNameBox.ForeColor = $text
 $modelNameBox.BorderStyle = 'FixedSingle'
-$modelNameBox.SetBounds(16, 432, 380, 28)
+$modelNameBox.SetBounds(20, 414, 190, 28)
 $optionsPanel.Controls.Add($modelNameBox)
 
-Add-ControlLabel $optionsPanel $T.existing 468 380 | Out-Null
+Add-ControlLabel $optionsPanel $T.existing 392 190 230 | Out-Null
 $existingBox = New-Object Windows.Forms.ComboBox
 $existingBox.DropDownStyle = 'DropDownList'
 $existingBox.Items.AddRange(@('continue', 'replace'))
@@ -516,36 +639,59 @@ $existingBox.SelectedIndex = 0
 $existingBox.BackColor = $input
 $existingBox.ForeColor = $text
 $existingBox.FlatStyle = 'Flat'
-$existingBox.SetBounds(16, 492, 380, 28)
+$existingBox.SetBounds(230, 414, 190, 28)
 $optionsPanel.Controls.Add($existingBox)
 
+$taskPanel = New-Object Windows.Forms.Panel
+$taskPanel.BackColor = $surface
+$taskPanel.SetBounds(990, 654, 440, 172)
+$taskPanel.Anchor = 'Bottom,Right'
+$form.Controls.Add($taskPanel)
+
 $logTitle = New-Object Windows.Forms.Label
-$logTitle.Text = $T.log
-$logTitle.Font = New-Object Drawing.Font('Microsoft YaHei UI', 10, [Drawing.FontStyle]::Bold)
-$logTitle.SetBounds(16, 532, 250, 24)
-$optionsPanel.Controls.Add($logTitle)
+$logTitle.Text = $T.taskStatus
+$logTitle.Font = New-Object Drawing.Font('Microsoft YaHei UI', 11, [Drawing.FontStyle]::Bold)
+$logTitle.SetBounds(20, 12, 180, 26)
+$taskPanel.Controls.Add($logTitle)
+
+$statusLabel = New-Object Windows.Forms.Label
+$statusLabel.Text = $T.ready
+$statusLabel.ForeColor = $success
+$statusLabel.TextAlign = 'MiddleRight'
+$statusLabel.SetBounds(200, 12, 220, 26)
+$taskPanel.Controls.Add($statusLabel)
 
 $logBox = New-Object Windows.Forms.RichTextBox
 $logBox.ReadOnly = $true
-$logBox.BackColor = [Drawing.Color]::FromArgb(14, 16, 20)
+$logBox.BackColor = $background
 $logBox.ForeColor = [Drawing.Color]::FromArgb(205, 211, 222)
 $logBox.BorderStyle = 'None'
 $logBox.Font = New-Object Drawing.Font('Cascadia Mono', 8)
 $logBox.WordWrap = $false
-$logBox.SetBounds(16, 558, 380, 48)
-$optionsPanel.Controls.Add($logBox)
+$logBox.SetBounds(20, 42, 400, 65)
+$taskPanel.Controls.Add($logBox)
 
 $mainButton = New-Object Windows.Forms.Button
 $mainButton.Text = $T.openMain
-$mainButton.SetBounds(16, 614, 380, 34)
+$mainButton.SetBounds(20, 119, 400, 36)
 Style-Button $mainButton $accent
-$optionsPanel.Controls.Add($mainButton)
+$taskPanel.Controls.Add($mainButton)
 
-$statusLabel = New-Object Windows.Forms.Label
-$statusLabel.Text = $T.ready
-$statusLabel.ForeColor = $accent
-$statusLabel.SetBounds(16, 652, 380, 24)
-$optionsPanel.Controls.Add($statusLabel)
+function Resize-WorkflowLayout {
+    $buttonWidth = [Math]::Max(
+        300, [Math]::Floor(($actionHost.ClientSize.Width - 54) / 2))
+    foreach ($button in $buttonList) {
+        $button.Width = $buttonWidth
+    }
+    $optionsPanel.Height = [Math]::Max(
+        456, $taskPanel.Top - $optionsPanel.Top - 12)
+}
+
+$form.Add_Resize({
+    Resize-WorkflowLayout
+})
+
+$form.ResumeLayout($false)
 
 $runner = New-Object DflWorkflow.ProcessMonitor
 $script:batchQueue = New-Object Collections.Queue
@@ -1127,6 +1273,15 @@ $workspaceBrowse.Add_Click({
     $dialog.Dispose()
 })
 
+$workspaceOpen.Add_Click({
+    if (Test-Path -LiteralPath $workspaceBox.Text) {
+        Start-Process explorer.exe -ArgumentList (Quote-Arg ([IO.Path]::GetFullPath($workspaceBox.Text))) | Out-Null
+    }
+    else {
+        [Windows.Forms.MessageBox]::Show($T.invalidWorkspace, $T.title, 'OK', 'Warning') | Out-Null
+    }
+})
+
 $mainButton.Add_Click({
     $main = Get-Process -Name powershell -ErrorAction SilentlyContinue |
         Where-Object { $_.MainWindowTitle -eq 'DeepFaceLab RTX 5090 ' + [char]0x63A7 + [char]0x5236 + [char]0x53F0 } |
@@ -1199,7 +1354,9 @@ $timer.Add_Tick({
 })
 
 $form.Add_Shown({
-    Add-Log ('57 commands ready. Workspace: ' + $workspaceBox.Text)
+    Resize-WorkflowLayout
+    $form.ActiveControl = $navButtonList[0]
+    Add-Log $T.ready
     $timer.Start()
 })
 
