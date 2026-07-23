@@ -8,24 +8,26 @@ Add-Type -AssemblyName System.Drawing
 # ConvertFrom-Json expands the Unicode escapes into Simplified Chinese at runtime.
 $T = @'
 {
-  "title": "DeepFaceLab RTX 5090 \u63a7\u5236\u53f0",
-  "subtitle": "\u672c\u673a\u539f\u751f\u63a7\u5236 \u00b7 Docker/WSL2 \u8ba1\u7b97 \u00b7 Windows \u5b9e\u65f6\u9884\u89c8",
+  "title": "DeepFaceLab \u8bad\u7ec3\u63a7\u5236\u53f0",
   "workspace": "\u5de5\u4f5c\u533a",
   "browse": "\u6d4f\u89c8\u2026",
+  "settings": "\u8bad\u7ec3\u8bbe\u7f6e",
+  "tools": "\u73af\u5883\u5de5\u5177",
   "modelType": "\u6a21\u578b\u7c7b\u578b",
   "modelName": "\u6a21\u578b\u540d\u79f0",
-  "preview": "\u663e\u793a Windows \u5b9e\u65f6\u9884\u89c8\uff08\u63a8\u8350\uff09",
-  "silent": "\u4f7f\u7528\u5df2\u6709\u8bbe\u7f6e\u76f4\u63a5\u542f\u52a8",
+  "preview": "\u81ea\u52a8\u663e\u793a\u5b9e\u65f6\u9884\u89c8",
+  "silent": "\u6cbf\u7528\u5df2\u6709\u6a21\u578b\u8bbe\u7f6e",
   "cpu": "\u4ec5 CPU \u6a21\u5f0f",
-  "workflow": "\u5b8c\u6574\u5de5\u4f5c\u6d41\uff0857 \u4e2a\u65e7\u7248\u547d\u4ee4\uff09",
+  "workflow": "\u6253\u5f00\u5de5\u4f5c\u53f0",
+  "workbenchTitle": "DeepFaceLab \u5de5\u4f5c\u53f0",
   "start": "\u5f00\u59cb\u8bad\u7ec3",
   "stop": "\u4fdd\u5b58\u5e76\u505c\u6b62",
   "showPreview": "\u663e\u793a\u9884\u89c8",
   "previewNotFound": "\u6682\u672a\u627e\u5230\u9884\u89c8\u7a97\u53e3\uff0c\u8bf7\u7b49\u6a21\u578b\u52a0\u8f7d\u5b8c\u6210\u540e\u518d\u8bd5\u3002",
-  "build": "\u5b89\u88c5 / \u66f4\u65b0\u8fd0\u884c\u73af\u5883",
+  "build": "\u5b89\u88c5 / \u66f4\u65b0\u73af\u5883",
   "verify": "\u73af\u5883\u68c0\u6d4b",
   "open": "\u6253\u5f00\u5de5\u4f5c\u533a",
-  "log": "\u8fd0\u884c\u65e5\u5fd7",
+  "log": "\u8bad\u7ec3\u65e5\u5fd7",
   "ready": "\u5c31\u7eea",
   "gpu": "\u663e\u5361",
   "runtime": "\u8bad\u7ec3\u72b6\u6001",
@@ -155,6 +157,13 @@ namespace DflGui {
         }
     }
 
+    public static class WindowTools {
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        public static extern bool SetForegroundWindow(IntPtr hWnd);
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+    }
+
 }
 '@ -Language CSharp
 
@@ -185,64 +194,59 @@ function Get-Docker([string] $Arguments, [int] $Timeout = 4000) {
     return [DflGui.ProcessMonitor]::Capture($docker, $Arguments, $repoRoot, $Timeout)
 }
 
-$background = [Drawing.Color]::FromArgb(18, 20, 25)
-$panel = [Drawing.Color]::FromArgb(28, 31, 38)
-$input = [Drawing.Color]::FromArgb(38, 42, 51)
-$text = [Drawing.Color]::FromArgb(235, 238, 243)
-$muted = [Drawing.Color]::FromArgb(150, 158, 174)
-$accent = [Drawing.Color]::FromArgb(41, 196, 132)
-$danger = [Drawing.Color]::FromArgb(231, 89, 99)
-$border = [Drawing.Color]::FromArgb(58, 63, 74)
+$background = [Drawing.Color]::FromArgb(11, 15, 20)
+$surface = [Drawing.Color]::FromArgb(20, 26, 34)
+$panel = [Drawing.Color]::FromArgb(23, 30, 40)
+$surfaceRaised = [Drawing.Color]::FromArgb(28, 37, 50)
+$input = [Drawing.Color]::FromArgb(29, 38, 50)
+$text = [Drawing.Color]::FromArgb(242, 245, 249)
+$muted = [Drawing.Color]::FromArgb(143, 157, 177)
+$accent = [Drawing.Color]::FromArgb(75, 141, 248)
+$success = [Drawing.Color]::FromArgb(55, 211, 153)
+$danger = [Drawing.Color]::FromArgb(240, 82, 98)
+$dangerSurface = [Drawing.Color]::FromArgb(55, 30, 38)
+$dangerText = [Drawing.Color]::FromArgb(255, 191, 199)
+$dangerBorder = [Drawing.Color]::FromArgb(119, 52, 65)
+$border = [Drawing.Color]::FromArgb(43, 55, 72)
 $font = New-Object Drawing.Font('Microsoft YaHei UI', 9)
 
 $form = New-Object Windows.Forms.Form
 $form.Text = $T.title
-$form.ClientSize = New-Object Drawing.Size(1120, 740)
-$form.MinimumSize = New-Object Drawing.Size(980, 680)
+$form.ClientSize = New-Object Drawing.Size(1280, 800)
+$form.MinimumSize = New-Object Drawing.Size(1120, 820)
 $form.StartPosition = 'CenterScreen'
 $form.BackColor = $background
 $form.ForeColor = $text
 $form.Font = $font
 $form.AutoScaleMode = 'Dpi'
+$form.SuspendLayout()
 
 $previewForm = New-Object Windows.Forms.Form
 $previewForm.Text = 'DeepFaceLab - ' + $T.showPreview
 $previewForm.ClientSize = New-Object Drawing.Size(1100, 820)
 $previewForm.MinimumSize = New-Object Drawing.Size(720, 540)
 $previewForm.StartPosition = 'CenterScreen'
-$previewForm.BackColor = [Drawing.Color]::Black
+$previewForm.BackColor = $background
 $previewForm.KeyPreview = $true
 $previewPicture = New-Object Windows.Forms.PictureBox
 $previewPicture.Dock = 'Fill'
-$previewPicture.BackColor = [Drawing.Color]::Black
+$previewPicture.BackColor = $background
 $previewPicture.SizeMode = 'Zoom'
 $previewForm.Controls.Add($previewPicture)
 
 $title = New-Object Windows.Forms.Label
 $title.Text = $T.title
-$title.Font = New-Object Drawing.Font('Microsoft YaHei UI', 20, [Drawing.FontStyle]::Bold)
+$title.Font = New-Object Drawing.Font('Microsoft YaHei UI', 21, [Drawing.FontStyle]::Bold)
 $title.ForeColor = $text
-$title.SetBounds(24, 18, 600, 38)
+$title.SetBounds(24, 14, 600, 42)
 $form.Controls.Add($title)
-
-$subtitle = New-Object Windows.Forms.Label
-$subtitle.Text = $T.subtitle
-$subtitle.ForeColor = $muted
-$subtitle.SetBounds(27, 57, 700, 24)
-$form.Controls.Add($subtitle)
 
 $gpuLabel = New-Object Windows.Forms.Label
 $gpuLabel.TextAlign = 'MiddleRight'
 $gpuLabel.ForeColor = $muted
 $gpuLabel.Anchor = 'Top,Right'
-$gpuLabel.SetBounds(700, 23, 390, 48)
+$gpuLabel.SetBounds(790, 12, 466, 44)
 $form.Controls.Add($gpuLabel)
-
-$configPanel = New-Object Windows.Forms.Panel
-$configPanel.BackColor = $panel
-$configPanel.SetBounds(20, 94, 350, 610)
-$configPanel.Anchor = 'Top,Bottom,Left'
-$form.Controls.Add($configPanel)
 
 function Add-Label($Parent, [string] $Caption, [int] $X, [int] $Y, [int] $Width = 300) {
     $label = New-Object Windows.Forms.Label
@@ -256,29 +260,72 @@ function Add-Label($Parent, [string] $Caption, [int] $X, [int] $Y, [int] $Width 
 function Style-Button($Button, [Drawing.Color] $Color) {
     $Button.FlatStyle = 'Flat'
     $Button.FlatAppearance.BorderSize = 0
+    $Button.FlatAppearance.MouseOverBackColor = [Drawing.Color]::FromArgb(84, 151, 255)
+    $Button.FlatAppearance.MouseDownBackColor = [Drawing.Color]::FromArgb(55, 107, 195)
     $Button.BackColor = $Color
     $Button.ForeColor = [Drawing.Color]::White
     $Button.Cursor = 'Hand'
     $Button.Font = New-Object Drawing.Font('Microsoft YaHei UI', 9, [Drawing.FontStyle]::Bold)
+    $Button.UseVisualStyleBackColor = $false
 }
 
-Add-Label $configPanel $T.workspace 18 20 | Out-Null
+function Style-DangerButton($Button) {
+    $Button.FlatStyle = 'Flat'
+    $Button.FlatAppearance.BorderSize = 1
+    $Button.FlatAppearance.BorderColor = $dangerBorder
+    $Button.FlatAppearance.MouseOverBackColor = [Drawing.Color]::FromArgb(78, 39, 49)
+    $Button.FlatAppearance.MouseDownBackColor = [Drawing.Color]::FromArgb(94, 42, 53)
+    $Button.BackColor = $dangerSurface
+    $Button.ForeColor = $dangerText
+    $Button.Cursor = 'Hand'
+    $Button.Font = New-Object Drawing.Font('Microsoft YaHei UI', 9, [Drawing.FontStyle]::Bold)
+    $Button.UseVisualStyleBackColor = $false
+}
+
+$workspacePanel = New-Object Windows.Forms.Panel
+$workspacePanel.BackColor = $surface
+$workspacePanel.SetBounds(20, 66, 1240, 60)
+$workspacePanel.Anchor = 'Top,Left,Right'
+$form.Controls.Add($workspacePanel)
+
+Add-Label $workspacePanel $T.workspace 16 20 76 | Out-Null
 $workspaceBox = New-Object Windows.Forms.TextBox
 $workspaceBox.Text = Join-Path $repoRoot 'workspace'
 $workspaceBox.BackColor = $input
 $workspaceBox.ForeColor = $text
 $workspaceBox.BorderStyle = 'FixedSingle'
-$workspaceBox.SetBounds(18, 47, 238, 29)
-$configPanel.Controls.Add($workspaceBox)
+$workspaceBox.SetBounds(92, 16, 932, 29)
+$workspaceBox.Anchor = 'Top,Left,Right'
+$workspacePanel.Controls.Add($workspaceBox)
 
 $browseButton = New-Object Windows.Forms.Button
 $browseButton.Text = $T.browse
-$browseButton.SetBounds(266, 45, 66, 32)
+$browseButton.SetBounds(1034, 14, 88, 33)
+$browseButton.Anchor = 'Top,Right'
 Style-Button $browseButton $border
-$configPanel.Controls.Add($browseButton)
+$workspacePanel.Controls.Add($browseButton)
 
-Add-Label $configPanel $T.modelType 18 94 140 | Out-Null
-Add-Label $configPanel $T.modelName 176 94 145 | Out-Null
+$openButton = New-Object Windows.Forms.Button
+$openButton.Text = $T.open
+$openButton.SetBounds(1132, 14, 92, 33)
+$openButton.Anchor = 'Top,Right'
+Style-Button $openButton $accent
+$workspacePanel.Controls.Add($openButton)
+
+$configPanel = New-Object Windows.Forms.Panel
+$configPanel.BackColor = $surface
+$configPanel.SetBounds(20, 142, 390, 638)
+$configPanel.Anchor = 'Top,Bottom,Left'
+$form.Controls.Add($configPanel)
+
+$configTitle = New-Object Windows.Forms.Label
+$configTitle.Text = $T.settings
+$configTitle.Font = New-Object Drawing.Font('Microsoft YaHei UI', 13, [Drawing.FontStyle]::Bold)
+$configTitle.SetBounds(20, 14, 300, 30)
+$configPanel.Controls.Add($configTitle)
+
+Add-Label $configPanel $T.modelType 20 52 160 | Out-Null
+Add-Label $configPanel $T.modelName 200 52 170 | Out-Null
 $modelTypeBox = New-Object Windows.Forms.ComboBox
 $modelTypeBox.DropDownStyle = 'DropDownList'
 $modelTypeBox.BackColor = $input
@@ -286,7 +333,7 @@ $modelTypeBox.ForeColor = $text
 $modelTypeBox.FlatStyle = 'Flat'
 $modelTypeBox.Items.AddRange(@('AMP', 'SAEHD', 'Quick96', 'XSeg'))
 $modelTypeBox.SelectedItem = 'SAEHD'
-$modelTypeBox.SetBounds(18, 121, 140, 30)
+$modelTypeBox.SetBounds(20, 76, 160, 30)
 $configPanel.Controls.Add($modelTypeBox)
 
 $modelNameBox = New-Object Windows.Forms.ComboBox
@@ -294,111 +341,111 @@ $modelNameBox.DropDownStyle = 'DropDown'
 $modelNameBox.BackColor = $input
 $modelNameBox.ForeColor = $text
 $modelNameBox.FlatStyle = 'Flat'
-$modelNameBox.SetBounds(176, 121, 156, 30)
+$modelNameBox.SetBounds(200, 76, 170, 30)
 $configPanel.Controls.Add($modelNameBox)
 
 $previewCheck = New-Object Windows.Forms.CheckBox
 $previewCheck.Text = $T.preview
 $previewCheck.Checked = $true
 $previewCheck.ForeColor = $text
-$previewCheck.SetBounds(18, 174, 310, 28)
+$previewCheck.SetBounds(20, 124, 350, 26)
 $configPanel.Controls.Add($previewCheck)
 
 $silentCheck = New-Object Windows.Forms.CheckBox
 $silentCheck.Text = $T.silent
 $silentCheck.Checked = $true
 $silentCheck.ForeColor = $text
-$silentCheck.SetBounds(18, 207, 310, 28)
+$silentCheck.SetBounds(20, 154, 350, 26)
 $configPanel.Controls.Add($silentCheck)
 
 $cpuOnlyCheck = New-Object Windows.Forms.CheckBox
 $cpuOnlyCheck.Text = $T.cpu
 $cpuOnlyCheck.Checked = $false
 $cpuOnlyCheck.ForeColor = $text
-$cpuOnlyCheck.SetBounds(18, 237, 310, 28)
+$cpuOnlyCheck.SetBounds(20, 184, 350, 26)
 $configPanel.Controls.Add($cpuOnlyCheck)
 
 $startButton = New-Object Windows.Forms.Button
 $startButton.Text = $T.start
-$startButton.SetBounds(18, 274, 314, 48)
+$startButton.SetBounds(20, 222, 350, 48)
 Style-Button $startButton $accent
 $configPanel.Controls.Add($startButton)
 
 $stopButton = New-Object Windows.Forms.Button
 $stopButton.Text = $T.stop
 $stopButton.Enabled = $false
-$stopButton.SetBounds(18, 332, 202, 42)
-Style-Button $stopButton $danger
+$stopButton.SetBounds(20, 282, 216, 42)
+Style-DangerButton $stopButton
 $configPanel.Controls.Add($stopButton)
 
 $showPreviewButton = New-Object Windows.Forms.Button
 $showPreviewButton.Text = $T.showPreview
 $showPreviewButton.Enabled = $false
-$showPreviewButton.SetBounds(230, 332, 102, 42)
-Style-Button $showPreviewButton $border
+$showPreviewButton.SetBounds(246, 282, 124, 42)
+Style-Button $showPreviewButton $surfaceRaised
 $configPanel.Controls.Add($showPreviewButton)
 
 $workflowButton = New-Object Windows.Forms.Button
 $workflowButton.Text = $T.workflow
-$workflowButton.SetBounds(18, 384, 314, 38)
+$workflowButton.SetBounds(20, 342, 350, 42)
 Style-Button $workflowButton $accent
 $configPanel.Controls.Add($workflowButton)
 
+$toolsLabel = Add-Label $configPanel $T.tools 20 400 350
+$toolsLabel.Font = New-Object Drawing.Font('Microsoft YaHei UI', 9, [Drawing.FontStyle]::Bold)
+
 $buildButton = New-Object Windows.Forms.Button
 $buildButton.Text = $T.build
-$buildButton.SetBounds(18, 432, 314, 38)
-Style-Button $buildButton $border
+$buildButton.SetBounds(20, 424, 350, 38)
+Style-Button $buildButton $surfaceRaised
 $configPanel.Controls.Add($buildButton)
 
 $verifyButton = New-Object Windows.Forms.Button
 $verifyButton.Text = $T.verify
-$verifyButton.SetBounds(18, 480, 151, 38)
-Style-Button $verifyButton $border
+$verifyButton.SetBounds(20, 472, 350, 38)
+Style-Button $verifyButton $surfaceRaised
 $configPanel.Controls.Add($verifyButton)
-
-$openButton = New-Object Windows.Forms.Button
-$openButton.Text = $T.open
-$openButton.SetBounds(181, 480, 151, 38)
-Style-Button $openButton $border
-$configPanel.Controls.Add($openButton)
 
 $helpLabel = New-Object Windows.Forms.Label
 $helpLabel.Text = $T.previewHelp
 $helpLabel.ForeColor = $muted
-$helpLabel.SetBounds(18, 526, 314, 43)
+$helpLabel.SetBounds(20, 520, 350, 46)
 $helpLabel.AutoEllipsis = $true
 $configPanel.Controls.Add($helpLabel)
 
 $runtimeLabel = New-Object Windows.Forms.Label
 $runtimeLabel.Text = $T.runtime + ': ' + $T.notRunning
-$runtimeLabel.ForeColor = $muted
-$runtimeLabel.SetBounds(18, 575, 314, 24)
-$runtimeLabel.Anchor = 'Left,Bottom'
+$runtimeLabel.ForeColor = $success
+$runtimeLabel.TextAlign = 'MiddleLeft'
+$runtimeLabel.SetBounds(20, 594, 350, 26)
+$runtimeLabel.Anchor = 'Left,Right,Bottom'
 $configPanel.Controls.Add($runtimeLabel)
 
 $logPanel = New-Object Windows.Forms.Panel
-$logPanel.BackColor = $panel
-$logPanel.SetBounds(390, 94, 710, 610)
+$logPanel.BackColor = $surface
+$logPanel.SetBounds(430, 142, 830, 638)
 $logPanel.Anchor = 'Top,Bottom,Left,Right'
 $form.Controls.Add($logPanel)
 
 $logTitle = New-Object Windows.Forms.Label
 $logTitle.Text = $T.log
-$logTitle.Font = New-Object Drawing.Font('Microsoft YaHei UI', 11, [Drawing.FontStyle]::Bold)
-$logTitle.SetBounds(16, 13, 300, 28)
+$logTitle.Font = New-Object Drawing.Font('Microsoft YaHei UI', 13, [Drawing.FontStyle]::Bold)
+$logTitle.SetBounds(20, 14, 300, 30)
 $logPanel.Controls.Add($logTitle)
 
 $logBox = New-Object Windows.Forms.RichTextBox
 $logBox.ReadOnly = $true
-$logBox.BackColor = [Drawing.Color]::FromArgb(14, 16, 20)
+$logBox.BackColor = $background
 $logBox.ForeColor = [Drawing.Color]::FromArgb(205, 211, 222)
 $logBox.BorderStyle = 'None'
 $logBox.Font = New-Object Drawing.Font('Cascadia Mono', 9)
 $logBox.DetectUrls = $false
 $logBox.WordWrap = $false
-$logBox.SetBounds(16, 49, 678, 544)
+$logBox.SetBounds(20, 52, 790, 566)
 $logBox.Anchor = 'Top,Bottom,Left,Right'
 $logPanel.Controls.Add($logBox)
+
+$form.ResumeLayout($false)
 
 function Add-Log([string] $Line) {
     if ([string]::IsNullOrWhiteSpace($Line)) { return }
@@ -475,6 +522,8 @@ function Set-Busy([bool] $Busy) {
     $modelTypeBox.Enabled = $workspaceBox.Enabled
     $modelNameBox.Enabled = $workspaceBox.Enabled
     $cpuOnlyCheck.Enabled = $canConfigure
+    $previewCheck.Enabled = $canConfigure
+    $silentCheck.Enabled = $canConfigure
     $workflowButton.Enabled = -not $Busy
     $showPreviewButton.Enabled = $script:training
 }
@@ -497,6 +546,7 @@ function Start-Operation([string] $Name, [string] $Arguments, [string] $Status) 
     }
     $script:operation = $Name
     $runtimeLabel.Text = $T.runtime + ': ' + $Status
+    $runtimeLabel.ForeColor = $accent
     Set-Busy $true
     Add-Log $Status
     $commandRunner.Start($docker, $Arguments, $repoRoot, (New-DockerEnvironment $workspaceBox.Text))
@@ -534,14 +584,23 @@ $openButton.Add_Click({
 })
 
 $workflowButton.Add_Click({
-    $workflowScript = Join-Path $repoRoot 'DeepFaceLab-Workflow.ps1'
-    if (Test-Path -LiteralPath $workflowScript) {
-        $arguments = '-NoLogo -NoProfile -STA -ExecutionPolicy Bypass -File ' +
-                     (Quote-Arg $workflowScript) +
-                     ' -Workspace ' + (Quote-Arg $workspaceBox.Text) +
-                     ' -LegacyRoot ' + (Quote-Arg 'D:\DFL_RTX5000_series_2025')
-        Start-Process -FilePath 'powershell.exe' -ArgumentList $arguments `
-            -WorkingDirectory $repoRoot -WindowStyle Hidden | Out-Null
+    $workbench = Get-Process -Name powershell -ErrorAction SilentlyContinue |
+        Where-Object { $_.MainWindowTitle -eq $T.workbenchTitle } |
+        Select-Object -First 1
+    if ($null -ne $workbench) {
+        [DflGui.WindowTools]::ShowWindow($workbench.MainWindowHandle, 9) | Out-Null
+        [DflGui.WindowTools]::SetForegroundWindow($workbench.MainWindowHandle) | Out-Null
+    }
+    else {
+        $workflowScript = Join-Path $repoRoot 'DeepFaceLab-Workflow.ps1'
+        if (Test-Path -LiteralPath $workflowScript) {
+            $arguments = '-NoLogo -NoProfile -STA -ExecutionPolicy Bypass -File ' +
+                         (Quote-Arg $workflowScript) +
+                         ' -Workspace ' + (Quote-Arg $workspaceBox.Text) +
+                         ' -LegacyRoot ' + (Quote-Arg 'D:\DFL_RTX5000_series_2025')
+            Start-Process -FilePath 'powershell.exe' -ArgumentList $arguments `
+                -WorkingDirectory $repoRoot -WindowStyle Hidden | Out-Null
+        }
     }
 })
 
@@ -615,14 +674,17 @@ $timer.Add_Tick({
         if ($exitCode -ne 0) {
             Add-Log ($T.operationFailed + ' ' + $exitCode)
             $runtimeLabel.Text = $T.runtime + ': ' + $T.notRunning
+            $runtimeLabel.ForeColor = $danger
         }
         elseif ($finished -eq 'build') {
             Add-Log $T.imageReady
             $runtimeLabel.Text = $T.runtime + ': ' + $T.ready
+            $runtimeLabel.ForeColor = $success
         }
         elseif ($finished -eq 'verify') {
             Add-Log $T.verifyDone
             $runtimeLabel.Text = $T.runtime + ': ' + $T.ready
+            $runtimeLabel.ForeColor = $success
         }
         elseif ($finished -eq 'start') {
             $script:training = $true
@@ -638,7 +700,7 @@ $timer.Add_Tick({
         if ($state) {
             $script:training = $true
             $runtimeLabel.Text = $T.runtime + ': ' + $T.running
-            $runtimeLabel.ForeColor = $accent
+            $runtimeLabel.ForeColor = $success
             $stopButton.Enabled = -not $commandRunner.Active
             $showPreviewButton.Enabled = $true
             $startButton.Enabled = $false
@@ -700,6 +762,7 @@ $previewForm.Add_FormClosing({
 
 $form.Add_Shown({
     Refresh-Models
+    $form.ActiveControl = $startButton
     Add-Log $T.ready
     $initialState = Get-ContainerState
     if ($initialState) {

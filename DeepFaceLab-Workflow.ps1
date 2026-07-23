@@ -1284,7 +1284,11 @@ $workspaceOpen.Add_Click({
 
 $mainButton.Add_Click({
     $main = Get-Process -Name powershell -ErrorAction SilentlyContinue |
-        Where-Object { $_.MainWindowTitle -eq 'DeepFaceLab RTX 5090 ' + [char]0x63A7 + [char]0x5236 + [char]0x53F0 } |
+        Where-Object {
+            $_.MainWindowTitle -eq 'DeepFaceLab ' +
+                [char]0x8BAD + [char]0x7EC3 +
+                [char]0x63A7 + [char]0x5236 + [char]0x53F0
+        } |
         Select-Object -First 1
     if ($null -ne $main) {
         [DflWorkflow.WindowTools]::ShowWindow($main.MainWindowHandle, 9) | Out-Null

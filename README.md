@@ -164,15 +164,14 @@ copy-mode windows, the trainer atomically publishes a preview image every ten
 seconds and the control panel displays it in a native Windows preview window.
 The **Show preview** button restores that window after it is closed or hidden.
 
-The **Complete workflow (57 legacy commands)** button opens a categorized
-Windows toolbox for workspace/video, SRC, DST, XSeg, training/export, and
-merge/output operations. Batch and GPU-heavy jobs use the maintained Blackwell
-container. Operations that require a visible mouse-driven window (manual face
-extraction, XSeg editing, sorting prompts, DFM export, and interactive merging)
-use the native runtime from `D:\DFL_RTX5000_series_2025` while operating on the
-selected workspace. The toolbox detects that reference runtime internally, so
-the implementation path does not clutter the normal interface. Destructive
-actions are marked red and require confirmation.
+The **Open Workbench** button opens the categorized workspace for material,
+SRC, DST, XSeg, training/export, and merge/output operations. Batch and
+GPU-heavy jobs use the maintained Blackwell container. Operations that require
+a visible mouse-driven interface open their dedicated native windows, including
+manual face extraction, XSeg editing, image viewing, and interactive merging.
+The workbench detects the reference runtime internally, so implementation paths
+do not clutter the normal interface. Destructive actions use a distinct warning
+style and require confirmation.
 
 To install both WSL2/Ubuntu and Docker Desktop automatically, run the following
 from an Administrator PowerShell and restart Windows if requested:
