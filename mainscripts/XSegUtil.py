@@ -13,21 +13,20 @@ from DFLIMG import *
 from facelib import XSegNet, LandmarksProcessor, FaceType
 import pickle
 
-def apply_xseg(input_path, model_path):
+def apply_xseg(input_path, model_path, face_type=None, cpu_only=False, force_gpu_idx=None):
     if not input_path.exists():
         raise ValueError(f'{input_path} not found. Please ensure it exists.')
 
     if not model_path.exists():
         raise ValueError(f'{model_path} not found. Please ensure it exists.')
         
-    face_type = None
-    
-    model_dat = model_path / 'XSeg_data.dat'
-    if model_dat.exists():
-        dat = pickle.loads( model_dat.read_bytes() )
-        dat_options = dat.get('options', None)
-        if dat_options is not None:
-            face_type = dat_options.get('face_type', None)
+    if face_type is None:
+        model_dat = model_path / 'XSeg_data.dat'
+        if model_dat.exists():
+            dat = pickle.loads( model_dat.read_bytes() )
+            dat_options = dat.get('options', None)
+            if dat_options is not None:
+                face_type = dat_options.get('face_type', None)
         
         
         
@@ -45,7 +44,12 @@ def apply_xseg(input_path, model_path):
                      
     io.log_info(f'Applying trained XSeg model to {input_path.name}/ folder.')
 
-    device_config = nn.DeviceConfig.ask_choose_device(choose_only_one=True)
+    if cpu_only:
+        device_config = nn.DeviceConfig.CPU()
+    elif force_gpu_idx is not None:
+        device_config = nn.DeviceConfig.GPUIndexes([force_gpu_idx])
+    else:
+        device_config = nn.DeviceConfig.ask_choose_device(choose_only_one=True)
     nn.initialize(device_config)
         
     
@@ -102,7 +106,7 @@ def apply_xseg(input_path, model_path):
 
 
         
-def fetch_xseg(input_path):
+def fetch_xseg(input_path, delete_original=None):
     if not input_path.exists():
         raise ValueError(f'{input_path} not found. Please ensure it exists.')
     
@@ -129,13 +133,15 @@ def fetch_xseg(input_path):
     
     io.log_info(f'Files copied: {len(files_copied)}')
     
-    is_delete = io.input_bool (f"\r\nDelete original files?", True)
+    is_delete = delete_original
+    if is_delete is None:
+        is_delete = io.input_bool (f"\r\nDelete original files?", True)
     if is_delete:
         for filepath in files_copied:
             Path(filepath).unlink()
             
     
-def remove_xseg(input_path):
+def remove_xseg(input_path, skip_confirmation=False):
     if not input_path.exists():
         raise ValueError(f'{input_path} not found. Please ensure it exists.')
     
@@ -143,7 +149,8 @@ def remove_xseg(input_path):
     io.log_info('!!! WARNING : APPLIED XSEG MASKS WILL BE REMOVED FROM THE FRAMES !!!')
     io.log_info('!!! WARNING : APPLIED XSEG MASKS WILL BE REMOVED FROM THE FRAMES !!!')
     io.log_info('!!! WARNING : APPLIED XSEG MASKS WILL BE REMOVED FROM THE FRAMES !!!')
-    io.input_str('Press enter to continue.')
+    if not skip_confirmation:
+        io.input_str('Press enter to continue.')
                                
     images_paths = pathex.get_image_paths(input_path, return_Path_class=True)
     
@@ -160,7 +167,7 @@ def remove_xseg(input_path):
             files_processed += 1
     io.log_info(f'Files processed: {files_processed}')
     
-def remove_xseg_labels(input_path):
+def remove_xseg_labels(input_path, skip_confirmation=False):
     if not input_path.exists():
         raise ValueError(f'{input_path} not found. Please ensure it exists.')
     
@@ -168,7 +175,8 @@ def remove_xseg_labels(input_path):
     io.log_info('!!! WARNING : LABELED XSEG POLYGONS WILL BE REMOVED FROM THE FRAMES !!!')
     io.log_info('!!! WARNING : LABELED XSEG POLYGONS WILL BE REMOVED FROM THE FRAMES !!!')
     io.log_info('!!! WARNING : LABELED XSEG POLYGONS WILL BE REMOVED FROM THE FRAMES !!!')
-    io.input_str('Press enter to continue.')
+    if not skip_confirmation:
+        io.input_str('Press enter to continue.')
     
     images_paths = pathex.get_image_paths(input_path, return_Path_class=True)
     

@@ -717,6 +717,7 @@ def main(detector=None,
          jpeg_quality=None,
          cpu_only = False,
          force_gpu_idxs = None,
+         existing_output = 'ask',
          ):
 
     if not input_path.exists():
@@ -741,9 +742,9 @@ def main(detector=None,
     output_images_paths = pathex.get_image_paths(output_path)
     output_debug_path = output_path.parent / (output_path.name + '_debug')
 
-    continue_extraction = False
+    continue_extraction = existing_output == 'continue'
     if not manual_output_debug_fix and len(output_images_paths) > 0:
-        if len(output_images_paths) > 128:
+        if len(output_images_paths) > 128 and existing_output == 'ask':
             continue_extraction = io.input_bool ("Continue extraction?", True, help_message="Extraction can be continued, but you must specify the same options again.")
 
         if len(output_images_paths) > 128 and continue_extraction:
@@ -753,9 +754,11 @@ def main(detector=None,
                 io.log_err("Error in fetching the last index. Extraction cannot be continued.")
                 return
         elif input_path != output_path:
-                io.input(f"\n WARNING !!! \n {output_path} contains files! \n They will be deleted. \n Press enter to continue.\n")
-                for filename in output_images_paths:
-                    Path(filename).unlink()
+                if existing_output == 'ask':
+                    io.input(f"\n WARNING !!! \n {output_path} contains files! \n They will be deleted. \n Press enter to continue.\n")
+                if existing_output != 'continue':
+                    for filename in output_images_paths:
+                        Path(filename).unlink()
 
     device_config = nn.DeviceConfig.GPUIndexes( force_gpu_idxs or nn.ask_choose_device_idxs(choose_only_one=detector=='manual', suggest_all_gpu=True) ) \
                     if not cpu_only else nn.DeviceConfig.CPU()

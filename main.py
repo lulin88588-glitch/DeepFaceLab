@@ -43,23 +43,25 @@ if __name__ == "__main__":
                         jpeg_quality            = arguments.jpeg_quality,
                         cpu_only                = arguments.cpu_only,
                         force_gpu_idxs          = [ int(x) for x in arguments.force_gpu_idxs.split(',') ] if arguments.force_gpu_idxs is not None else None,
+                        existing_output         = arguments.existing_output,
                       )
 
     p = subparsers.add_parser( "extract", help="Extract the faces from a pictures.")
     p.add_argument('--detector', dest="detector", choices=['s3fd','manual'], default=None, help="Type of detector.")
     p.add_argument('--input-dir', required=True, action=fixPathAction, dest="input_dir", help="Input directory. A directory containing the files you wish to process.")
     p.add_argument('--output-dir', required=True, action=fixPathAction, dest="output_dir", help="Output directory. This is where the extracted files will be stored.")
-    p.add_argument('--output-debug', action="store_true", dest="output_debug", default=None, help="Writes debug images to <output-dir>_debug\ directory.")
-    p.add_argument('--no-output-debug', action="store_false", dest="output_debug", default=None, help="Don't writes debug images to <output-dir>_debug\ directory.")
+    p.add_argument('--output-debug', action="store_true", dest="output_debug", default=None, help="Writes debug images to <output-dir>_debug\\ directory.")
+    p.add_argument('--no-output-debug', action="store_false", dest="output_debug", default=None, help="Don't writes debug images to <output-dir>_debug\\ directory.")
     p.add_argument('--face-type', dest="face_type", choices=['half_face', 'full_face', 'whole_face', 'head', 'mark_only'], default=None)
     p.add_argument('--max-faces-from-image', type=int, dest="max_faces_from_image", default=None, help="Max faces from image.")    
     p.add_argument('--image-size', type=int, dest="image_size", default=None, help="Output image size.")
     p.add_argument('--jpeg-quality', type=int, dest="jpeg_quality", default=None, help="Jpeg quality.")    
     p.add_argument('--manual-fix', action="store_true", dest="manual_fix", default=False, help="Enables manual extract only frames where faces were not recognized.")
-    p.add_argument('--manual-output-debug-fix', action="store_true", dest="manual_output_debug_fix", default=False, help="Performs manual reextract input-dir frames which were deleted from [output_dir]_debug\ dir.")
+    p.add_argument('--manual-output-debug-fix', action="store_true", dest="manual_output_debug_fix", default=False, help="Performs manual reextract input-dir frames which were deleted from [output_dir]_debug\\ dir.")
     p.add_argument('--manual-window-size', type=int, dest="manual_window_size", default=1368, help="Manual fix window size. Default: 1368.")
     p.add_argument('--cpu-only', action="store_true", dest="cpu_only", default=False, help="Extract on CPU..")
     p.add_argument('--force-gpu-idxs', dest="force_gpu_idxs", default=None, help="Force to choose GPU indexes separated by comma.")
+    p.add_argument('--existing-output', dest="existing_output", choices=['ask','continue','replace'], default='ask', help="How to handle an existing aligned faceset.")
 
     p.set_defaults (func=process_extract)
 
@@ -70,7 +72,7 @@ if __name__ == "__main__":
 
     p = subparsers.add_parser( "sort", help="Sort faces in a directory.")
     p.add_argument('--input-dir', required=True, action=fixPathAction, dest="input_dir", help="Input directory. A directory containing the files you wish to process.")
-    p.add_argument('--by', dest="sort_by_method", default=None, choices=("blur", "motion-blur", "face-yaw", "face-pitch", "face-source-rect-size", "hist", "hist-dissim", "brightness", "hue", "black", "origname", "oneface", "final-by-blur", "final-by-size", "absdiff"), help="Method of sorting. 'origname' sort by original filename to recover original sequence." )
+    p.add_argument('--by', dest="sort_by_method", default=None, choices=("blur", "motion-blur", "face-yaw", "face-pitch", "face-source-rect-size", "hist", "hist-dissim", "brightness", "hue", "black", "origname", "oneface", "absdiff", "final", "final-fast"), help="Method of sorting. 'origname' sort by original filename to recover original sequence." )
     p.set_defaults (func=process_sort)
 
     def process_util(arguments):
@@ -259,24 +261,34 @@ if __name__ == "__main__":
         from mainscripts import FacesetEnhancer
         FacesetEnhancer.process_folder ( Path(arguments.input_dir),
                                          cpu_only=arguments.cpu_only,
-                                         force_gpu_idxs=arguments.force_gpu_idxs
+                                         force_gpu_idxs=[ int(x) for x in arguments.force_gpu_idxs.split(',') ] if arguments.force_gpu_idxs is not None else None,
+                                         merge=arguments.merge
                                        )
 
     p = facesettool_parser.add_parser ("enhance", help="Enhance details in DFL faceset.")
     p.add_argument('--input-dir', required=True, action=fixPathAction, dest="input_dir", help="Input directory of aligned faces.")
     p.add_argument('--cpu-only', action="store_true", dest="cpu_only", default=False, help="Process on CPU.")
     p.add_argument('--force-gpu-idxs', dest="force_gpu_idxs", default=None, help="Force to choose GPU indexes separated by comma.")
+    p.add_argument('--merge', action="store_true", dest="merge", default=None, help="Merge enhanced images into the original faceset.")
+    p.add_argument('--no-merge', action="store_false", dest="merge", help="Keep enhanced images in a separate directory.")
 
     p.set_defaults(func=process_faceset_enhancer)
     
     
     p = facesettool_parser.add_parser ("resize", help="Resize DFL faceset.")
     p.add_argument('--input-dir', required=True, action=fixPathAction, dest="input_dir", help="Input directory of aligned faces.")
+    p.add_argument('--image-size', type=int, dest="image_size", default=None, help="Output image size.")
+    p.add_argument('--face-type', dest="face_type", choices=['h','mf','f','wf','head','same'], default=None, help="Output face type.")
+    p.add_argument('--merge', action="store_true", dest="merge", default=None, help="Merge resized images into the original faceset.")
+    p.add_argument('--no-merge', action="store_false", dest="merge", help="Keep resized images in a separate directory.")
 
     def process_faceset_resizer(arguments):
         osex.set_process_lowest_prio()
         from mainscripts import FacesetResizer
-        FacesetResizer.process_folder ( Path(arguments.input_dir) )
+        FacesetResizer.process_folder ( Path(arguments.input_dir),
+                                        image_size=arguments.image_size,
+                                        face_type=arguments.face_type,
+                                        merge=arguments.merge )
     p.set_defaults(func=process_faceset_resizer)
 
     def process_dev_test(arguments):
@@ -308,9 +320,16 @@ if __name__ == "__main__":
     def process_xsegapply(arguments):
         osex.set_process_lowest_prio()
         from mainscripts import XSegUtil
-        XSegUtil.apply_xseg (Path(arguments.input_dir), Path(arguments.model_dir))
+        XSegUtil.apply_xseg (Path(arguments.input_dir),
+                             Path(arguments.model_dir),
+                             face_type=arguments.face_type,
+                             cpu_only=arguments.cpu_only,
+                             force_gpu_idx=arguments.force_gpu_idx)
     p.add_argument('--input-dir', required=True, action=fixPathAction, dest="input_dir")
     p.add_argument('--model-dir', required=True, action=fixPathAction, dest="model_dir")
+    p.add_argument('--face-type', dest="face_type", choices=['h','mf','f','wf','head','same'], default=None)
+    p.add_argument('--cpu-only', action="store_true", dest="cpu_only", default=False)
+    p.add_argument('--force-gpu-idx', type=int, dest="force_gpu_idx", default=None)
     p.set_defaults (func=process_xsegapply)
     
     
@@ -318,8 +337,9 @@ if __name__ == "__main__":
     def process_xsegremove(arguments):
         osex.set_process_lowest_prio()
         from mainscripts import XSegUtil
-        XSegUtil.remove_xseg (Path(arguments.input_dir) )
+        XSegUtil.remove_xseg (Path(arguments.input_dir), skip_confirmation=arguments.skip_confirmation )
     p.add_argument('--input-dir', required=True, action=fixPathAction, dest="input_dir")
+    p.add_argument('--skip-confirmation', action="store_true", dest="skip_confirmation", default=False)
     p.set_defaults (func=process_xsegremove)
     
     
@@ -327,8 +347,9 @@ if __name__ == "__main__":
     def process_xsegremovelabels(arguments):
         osex.set_process_lowest_prio()
         from mainscripts import XSegUtil
-        XSegUtil.remove_xseg_labels (Path(arguments.input_dir) )
+        XSegUtil.remove_xseg_labels (Path(arguments.input_dir), skip_confirmation=arguments.skip_confirmation )
     p.add_argument('--input-dir', required=True, action=fixPathAction, dest="input_dir")
+    p.add_argument('--skip-confirmation', action="store_true", dest="skip_confirmation", default=False)
     p.set_defaults (func=process_xsegremovelabels)
     
     
@@ -337,8 +358,10 @@ if __name__ == "__main__":
     def process_xsegfetch(arguments):
         osex.set_process_lowest_prio()
         from mainscripts import XSegUtil
-        XSegUtil.fetch_xseg (Path(arguments.input_dir) )
+        XSegUtil.fetch_xseg (Path(arguments.input_dir), delete_original=arguments.delete_original )
     p.add_argument('--input-dir', required=True, action=fixPathAction, dest="input_dir")
+    p.add_argument('--delete-original', action="store_true", dest="delete_original", default=None)
+    p.add_argument('--keep-original', action="store_false", dest="delete_original")
     p.set_defaults (func=process_xsegfetch)
     
     def bad_args(arguments):

@@ -9,6 +9,7 @@
 !*.sh
 !*.yml
 !*.ps1
+!*.cmd
 !docker/
 !docker/*.sh
 !tests/

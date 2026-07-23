@@ -9,13 +9,15 @@ Add-Type -AssemblyName System.Drawing
 $T = @'
 {
   "title": "DeepFaceLab RTX 5090 \u63a7\u5236\u53f0",
-  "subtitle": "\u672c\u673a\u539f\u751f\u63a7\u5236 \u00b7 Docker/WSL2 \u8ba1\u7b97 \u00b7 WSLg \u5b9e\u65f6\u9884\u89c8",
+  "subtitle": "\u672c\u673a\u539f\u751f\u63a7\u5236 \u00b7 Docker/WSL2 \u8ba1\u7b97 \u00b7 Windows \u5b9e\u65f6\u9884\u89c8",
   "workspace": "\u5de5\u4f5c\u533a",
   "browse": "\u6d4f\u89c8\u2026",
   "modelType": "\u6a21\u578b\u7c7b\u578b",
   "modelName": "\u6a21\u578b\u540d\u79f0",
   "preview": "\u663e\u793a Windows \u5b9e\u65f6\u9884\u89c8\uff08\u63a8\u8350\uff09",
   "silent": "\u4f7f\u7528\u5df2\u6709\u8bbe\u7f6e\u76f4\u63a5\u542f\u52a8",
+  "cpu": "\u4ec5 CPU \u6a21\u5f0f",
+  "workflow": "\u5b8c\u6574\u5de5\u4f5c\u6d41\uff0857 \u4e2a\u65e7\u7248\u547d\u4ee4\uff09",
   "start": "\u5f00\u59cb\u8bad\u7ec3",
   "stop": "\u4fdd\u5b58\u5e76\u505c\u6b62",
   "showPreview": "\u663e\u793a\u9884\u89c8",
@@ -282,7 +284,7 @@ $modelTypeBox.DropDownStyle = 'DropDownList'
 $modelTypeBox.BackColor = $input
 $modelTypeBox.ForeColor = $text
 $modelTypeBox.FlatStyle = 'Flat'
-$modelTypeBox.Items.AddRange(@('SAEHD', 'Quick96', 'XSeg'))
+$modelTypeBox.Items.AddRange(@('AMP', 'SAEHD', 'Quick96', 'XSeg'))
 $modelTypeBox.SelectedItem = 'SAEHD'
 $modelTypeBox.SetBounds(18, 121, 140, 30)
 $configPanel.Controls.Add($modelTypeBox)
@@ -309,48 +311,61 @@ $silentCheck.ForeColor = $text
 $silentCheck.SetBounds(18, 207, 310, 28)
 $configPanel.Controls.Add($silentCheck)
 
+$cpuOnlyCheck = New-Object Windows.Forms.CheckBox
+$cpuOnlyCheck.Text = $T.cpu
+$cpuOnlyCheck.Checked = $false
+$cpuOnlyCheck.ForeColor = $text
+$cpuOnlyCheck.SetBounds(18, 237, 310, 28)
+$configPanel.Controls.Add($cpuOnlyCheck)
+
 $startButton = New-Object Windows.Forms.Button
 $startButton.Text = $T.start
-$startButton.SetBounds(18, 255, 314, 48)
+$startButton.SetBounds(18, 274, 314, 48)
 Style-Button $startButton $accent
 $configPanel.Controls.Add($startButton)
 
 $stopButton = New-Object Windows.Forms.Button
 $stopButton.Text = $T.stop
 $stopButton.Enabled = $false
-$stopButton.SetBounds(18, 313, 202, 42)
+$stopButton.SetBounds(18, 332, 202, 42)
 Style-Button $stopButton $danger
 $configPanel.Controls.Add($stopButton)
 
 $showPreviewButton = New-Object Windows.Forms.Button
 $showPreviewButton.Text = $T.showPreview
 $showPreviewButton.Enabled = $false
-$showPreviewButton.SetBounds(230, 313, 102, 42)
+$showPreviewButton.SetBounds(230, 332, 102, 42)
 Style-Button $showPreviewButton $border
 $configPanel.Controls.Add($showPreviewButton)
 
+$workflowButton = New-Object Windows.Forms.Button
+$workflowButton.Text = $T.workflow
+$workflowButton.SetBounds(18, 384, 314, 38)
+Style-Button $workflowButton $accent
+$configPanel.Controls.Add($workflowButton)
+
 $buildButton = New-Object Windows.Forms.Button
 $buildButton.Text = $T.build
-$buildButton.SetBounds(18, 384, 314, 38)
+$buildButton.SetBounds(18, 432, 314, 38)
 Style-Button $buildButton $border
 $configPanel.Controls.Add($buildButton)
 
 $verifyButton = New-Object Windows.Forms.Button
 $verifyButton.Text = $T.verify
-$verifyButton.SetBounds(18, 432, 151, 38)
+$verifyButton.SetBounds(18, 480, 151, 38)
 Style-Button $verifyButton $border
 $configPanel.Controls.Add($verifyButton)
 
 $openButton = New-Object Windows.Forms.Button
 $openButton.Text = $T.open
-$openButton.SetBounds(181, 432, 151, 38)
+$openButton.SetBounds(181, 480, 151, 38)
 Style-Button $openButton $border
 $configPanel.Controls.Add($openButton)
 
 $helpLabel = New-Object Windows.Forms.Label
 $helpLabel.Text = $T.previewHelp
 $helpLabel.ForeColor = $muted
-$helpLabel.SetBounds(18, 500, 314, 70)
+$helpLabel.SetBounds(18, 526, 314, 43)
 $helpLabel.AutoEllipsis = $true
 $configPanel.Controls.Add($helpLabel)
 
@@ -459,6 +474,8 @@ function Set-Busy([bool] $Busy) {
     $browseButton.Enabled = $workspaceBox.Enabled
     $modelTypeBox.Enabled = $workspaceBox.Enabled
     $modelNameBox.Enabled = $workspaceBox.Enabled
+    $cpuOnlyCheck.Enabled = $canConfigure
+    $workflowButton.Enabled = -not $Busy
     $showPreviewButton.Enabled = $script:training
 }
 
@@ -516,6 +533,18 @@ $openButton.Add_Click({
     }
 })
 
+$workflowButton.Add_Click({
+    $workflowScript = Join-Path $repoRoot 'DeepFaceLab-Workflow.ps1'
+    if (Test-Path -LiteralPath $workflowScript) {
+        $arguments = '-NoLogo -NoProfile -STA -ExecutionPolicy Bypass -File ' +
+                     (Quote-Arg $workflowScript) +
+                     ' -Workspace ' + (Quote-Arg $workspaceBox.Text) +
+                     ' -LegacyRoot ' + (Quote-Arg 'D:\DFL_RTX5000_series_2025')
+        Start-Process -FilePath 'powershell.exe' -ArgumentList $arguments `
+            -WorkingDirectory $repoRoot -WindowStyle Hidden | Out-Null
+    }
+})
+
 $buildButton.Add_Click({
     $args = 'compose --ansi never -f ' + (Quote-Arg $composeFile) + ' build'
     Start-Operation 'build' $args $T.building
@@ -542,8 +571,9 @@ $startButton.Add_Click({
 
     $type = [string]$modelTypeBox.SelectedItem
     $args = 'compose --ansi never -f ' + (Quote-Arg $composeFile) +
-            ' run --rm -d --name ' + $containerName +
-            ' deepfacelab main.py train' +
+            ' run --rm -d --name ' + $containerName
+    if ($cpuOnlyCheck.Checked) { $args += ' -e CUDA_VISIBLE_DEVICES=-1' }
+    $args += ' deepfacelab main.py train' +
             ' --training-data-src-dir /workspace/data_src/aligned' +
             ' --training-data-dst-dir /workspace/data_dst/aligned' +
             ' --model-dir /workspace/model' +
@@ -552,6 +582,7 @@ $startButton.Add_Click({
         $args += ' --force-model-name ' + (Quote-Arg $modelNameBox.Text.Trim())
     }
     if ($silentCheck.Checked) { $args += ' --silent-start' }
+    if ($cpuOnlyCheck.Checked) { $args += ' --cpu-only' }
     $args += ' --no-preview'
     if ($previewCheck.Checked) {
         $args += ' --preview-output-path /workspace/.dfl-preview.jpg'
