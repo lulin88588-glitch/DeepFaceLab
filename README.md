@@ -4,6 +4,9 @@
 
 # DeepFaceLab  
 
+> This branch adds maintained RTX 5090 / RTX 50-series support, a native
+> Windows training console, and a complete two-column workflow workbench.
+
 <a href="https://arxiv.org/abs/2005.05535">
 
 <img src="https://static.arxiv.org/static/browse/0.3.0/images/icons/favicon.ico" width=14></img>
@@ -136,64 +139,108 @@ Unfortunately, there is no "make everything ok" button in DeepFaceLab. You shoul
 
 ## RTX 5090 / RTX 50-series (Blackwell)
 
-The maintained Blackwell runtime uses WSL2 and the published TensorFlow 2.21.0
-wheel from [TensorflowDockerBuilder](https://github.com/Syraxius/TensorflowDockerBuilder).
-That CUDA 12.8.1 build contains native `sm_120` cubins for RTX 50-series cards
-plus `compute_120` PTX fallback code. The release URL and its GitHub-recorded
-SHA-256 are pinned in `Dockerfile.blackwell`. Install WSL2 plus Docker Desktop's
-WSL2 backend, while `requirements-blackwell-cuda.txt` locks the matching CUDA
-12.8.1 and cuDNN 9.8 runtime packages. Then run from PowerShell:
+This branch keeps the original DeepFaceLab workflow while adding a reproducible
+Blackwell compute runtime and native Windows management interfaces. GPU-heavy
+training and batch processing run in Docker/WSL2. Tasks that need direct mouse
+interaction use the proven native Windows tools.
 
-```powershell
-# Run once from an Administrator PowerShell, then restart if requested.
-.\enable_wsl2_admin.ps1
+### Runtime architecture
+
+| Component | Responsibility |
+|---|---|
+| Blackwell container | RTX 50-series training, extraction, XSeg processing, enhancement, and video jobs |
+| Training Console | Model selection, start/stop, GPU telemetry, logs, environment tools, and preview control |
+| Workflow Workbench | Material, SRC, DST, XSeg, training/export, and merge/output operations |
+| Native interactive runtime | Manual face extraction, XSeg editor, sorting prompts, DFM export, and interactive merger |
+| Windows preview window | Periodically refreshed training preview without relying on a WSLg copy-mode window |
+
+The workbench uses a fixed two-column action grid on every page. Destructive
+actions use a distinct warning style and require confirmation. The Training
+Console and Workbench switch to the existing window instead of opening duplicate
+instances.
+
+### Requirements
+
+- Windows 11 with WSL2 enabled.
+- A current NVIDIA Windows driver that exposes the RTX 50-series GPU to WSL2.
+- Docker Desktop with the WSL2 engine and Docker Compose v2.
+- The reference Windows runtime at `D:\DFL_RTX5000_series_2025` for interactive
+  legacy tools. The path is intentionally kept out of the normal user interface.
+- A workspace containing `data_src`, `data_dst`, and `model`.
+
+### Quick start
+
+1. Enable WSL2 from an Administrator PowerShell and restart Windows if requested:
+
+   ```powershell
+   .\enable_wsl2_admin.ps1
+   ```
+
+   To install both WSL2/Ubuntu and Docker Desktop automatically instead:
+
+   ```powershell
+   .\install_blackwell_prereqs_admin.ps1
+   ```
+
+2. Start Docker Desktop and enable its WSL2 engine.
+
+3. Double-click `DeepFaceLab-GUI.cmd`.
+
+4. In the Training Console:
+
+   - Select the workspace, model type, and saved model.
+   - Use **Install / Update Environment** after runtime changes.
+   - Use **Environment Check** to verify native Blackwell execution.
+   - Start training and use **Save and Stop** for a graceful shutdown.
+   - Use **Show Preview** to restore the native preview window.
+
+5. Use **Open Workbench** for the complete material-to-output workflow.
+
+### Workspace layout
+
+```text
+workspace/
+|-- data_src/
+|   `-- aligned/
+|-- data_dst/
+|   |-- aligned/
+|   |-- merged/
+|   `-- merged_mask/
+|-- model/
+|-- .dfl-assets/          # Prepared automatically when an operation needs it
+`-- .dfl-preview.jpg      # Published atomically while preview is enabled
 ```
 
-After installing Docker Desktop and enabling its WSL2 engine, use the command
-launcher (it works even when Windows PowerShell script execution is disabled):
+The default workspace is the repository's `workspace` directory. Both Windows
+interfaces can select another compatible directory and pass it to the container
+through `DFL_WORKSPACE_PATH`.
+
+### Command-line use and verification
+
+The command launcher works even when Windows PowerShell script execution is
+disabled:
 
 ```powershell
 .\run_blackwell.cmd
-```
-
-For normal Windows use, double-click `DeepFaceLab-GUI.cmd`. The native control
-panel can select a workspace and saved model, build or verify the runtime, start
-and gracefully stop training, follow logs, and display live RTX 5090 telemetry.
-Training stays in the reproducible Linux container. To avoid unreliable WSLg
-copy-mode windows, the trainer atomically publishes a preview image every ten
-seconds and the control panel displays it in a native Windows preview window.
-The **Show preview** button restores that window after it is closed or hidden.
-
-The **Open Workbench** button opens the categorized workspace for material,
-SRC, DST, XSeg, training/export, and merge/output operations. Batch and
-GPU-heavy jobs use the maintained Blackwell container. Operations that require
-a visible mouse-driven interface open their dedicated native windows, including
-manual face extraction, XSeg editing, image viewing, and interactive merging.
-The workbench detects the reference runtime internally, so implementation paths
-do not clutter the normal interface. Destructive actions use a distinct warning
-style and require confirmation.
-
-To install both WSL2/Ubuntu and Docker Desktop automatically, run the following
-from an Administrator PowerShell and restart Windows if requested:
-
-```powershell
-.\install_blackwell_prereqs_admin.ps1
-```
-
-The first build downloads the pinned wheel and dependencies; Docker BuildKit
-caches subsequent builds. With no arguments the command runs an actual small
-SAEHD forward/backward step on GPU 0 and fails unless the TensorFlow wheel
-reports CUDA 12.8+ and native `sm_120` kernels.
-
-The image build also inspects the generated wheel with NVIDIA `cuobjdump` and
-fails if its shared libraries contain no real `sm_120` cubin. This separates
-native Blackwell code from a PTX-only build before the runtime GPU test begins.
-Pass a DeepFaceLab command after the script name, for example:
-
-```powershell
 .\run_blackwell.cmd main.py --help
 .\run_blackwell.cmd main.py train --help
 ```
+
+With no additional arguments, `run_blackwell.cmd` builds the image and performs
+a real small DeepFaceLab forward/backward training step on GPU 0.
+
+The maintained Blackwell runtime uses the published TensorFlow 2.21.0 wheel from
+[TensorflowDockerBuilder](https://github.com/Syraxius/TensorflowDockerBuilder).
+The CUDA 12.8.1 build contains native `sm_120` cubins for RTX 50-series cards
+plus `compute_120` PTX fallback code. Its release URL and SHA-256 are pinned in
+`Dockerfile.blackwell`; `requirements-blackwell-cuda.txt` locks the matching
+CUDA 12.8.1 and cuDNN 9.8 packages.
+
+The image build inspects the wheel with NVIDIA `cuobjdump` and fails if its
+shared libraries contain no real `sm_120` cubin. Runtime verification also fails
+unless TensorFlow detects the GPU, reports CUDA 12.8 or newer, and completes the
+actual forward/backward step. Docker BuildKit caches the wheel and dependencies
+for subsequent builds.
 
 The repository is also tested against the stock upstream TensorFlow 2.21 API.
 From an Ubuntu WSL2 shell, `bash setup_modern_wsl.sh` creates that development
