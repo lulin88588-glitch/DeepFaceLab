@@ -1342,7 +1342,7 @@ $aiButton.Add_Click({
                          (Quote-Arg $assistantScript) +
                          ' -Workspace ' + (Quote-Arg $workspaceBox.Text)
             Start-Process -FilePath 'powershell.exe' -ArgumentList $arguments `
-                -WorkingDirectory $repoRoot -WindowStyle Normal | Out-Null
+                -WorkingDirectory $repoRoot -WindowStyle Hidden | Out-Null
         }
     }
 })

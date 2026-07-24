@@ -640,7 +640,7 @@ $oneClickButton.Add_Click({
                          ' -LegacyRoot ' +
                          (Quote-Arg 'D:\DFL_RTX5000_series_2025')
             Start-Process -FilePath 'powershell.exe' -ArgumentList $arguments `
-                -WorkingDirectory $repoRoot -WindowStyle Normal | Out-Null
+                -WorkingDirectory $repoRoot -WindowStyle Hidden | Out-Null
         }
     }
 })
@@ -663,7 +663,7 @@ $aiButton.Add_Click({
                          ' -ModelType ' +
                          (Quote-Arg ([string]$modelTypeBox.SelectedItem))
             Start-Process -FilePath 'powershell.exe' -ArgumentList $arguments `
-                -WorkingDirectory $repoRoot -WindowStyle Normal | Out-Null
+                -WorkingDirectory $repoRoot -WindowStyle Hidden | Out-Null
         }
     }
 })

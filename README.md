@@ -186,7 +186,10 @@ instances.
 
 2. Start Docker Desktop and enable its WSL2 engine.
 
-3. Double-click `DeepFaceLab-GUI.cmd`.
+3. Double-click `DeepFaceLab-GUI.vbs` for a console-free launch. The
+   `DeepFaceLab-GUI.cmd` compatibility entry delegates to the same hidden
+   launcher, but Windows may briefly show a command window while opening any
+   `.cmd` file.
 
 4. In the Training Console:
 
@@ -205,7 +208,8 @@ instances.
 
 ### One-click DFM training
 
-Double-click `DeepFaceLab-OneClick.cmd`, or open **One-click DFM Training**
+Double-click `DeepFaceLab-OneClick.vbs` for a console-free launch, or open
+**One-click DFM Training**
 from the Training Console. Select a project directory and choose
 **Create / Check Project**. The pipeline creates this recoverable layout:
 

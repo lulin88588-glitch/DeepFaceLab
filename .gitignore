@@ -10,6 +10,7 @@
 !*.yml
 !*.ps1
 !*.cmd
+!*.vbs
 !docker/
 !docker/*.sh
 !tests/
