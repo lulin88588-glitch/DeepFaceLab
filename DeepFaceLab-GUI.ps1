@@ -22,8 +22,27 @@ $T = @'
   "workbenchTitle": "DeepFaceLab \u5de5\u4f5c\u53f0",
   "oneClick": "\u4e00\u952e DFM \u8bad\u7ec3",
   "oneClickTitle": "DeepFaceLab DFM \u4e00\u952e\u8bad\u7ec3",
-  "aiAssistant": "AI \u52a9\u624b",
+  "aiAssistant": "AI \u667a\u80fd\u4e2d\u5fc3",
   "aiTitle": "DeepFaceLab AI \u52a9\u624b",
+  "logTab": "\u8bad\u7ec3\u65e5\u5fd7",
+  "aiPrivacy": "\u672c\u5730 AI \u00b7 \u7d20\u6750\u4e0d\u4e0a\u4e91 \u00b7 \u5efa\u8bae\u53ef\u4e00\u952e\u5e94\u7528",
+  "aiWorkspace": "\u7d20\u6750\u4f53\u68c0",
+  "aiTraining": "\u8bad\u7ec3\u8bca\u65ad",
+  "aiRecommend": "\u63a8\u8350\u914d\u7f6e",
+  "aiApply": "\u5e94\u7528\u5230\u65b0\u6a21\u578b",
+  "aiCopy": "\u590d\u5236\u62a5\u544a",
+  "aiIdle": "\u9009\u62e9\u4e00\u9879\u5206\u6790\uff0cAI \u4f1a\u8bfb\u53d6\u5f53\u524d\u7d20\u6750\u3001\u6a21\u578b\u3001\u9884\u89c8\u548c\u8fd0\u884c\u65e5\u5fd7\u3002",
+  "aiRunning": "AI \u6b63\u5728\u672c\u5730\u5206\u6790\u2026",
+  "aiComplete": "AI \u5206\u6790\u5b8c\u6210",
+  "aiFailed": "AI \u5206\u6790\u5931\u8d25",
+  "aiImageMissing": "\u672a\u627e\u5230 Blackwell \u8fd0\u884c\u955c\u50cf\uff0c\u8bf7\u5148\u70b9\u51fb\u201c\u5b89\u88c5 / \u66f4\u65b0\u73af\u5883\u201d\u3002",
+  "aiNoRecommendation": "\u8bf7\u5148\u751f\u6210\u63a8\u8350\u914d\u7f6e\u3002",
+  "aiSaeOnly": "\u76ee\u524d\u53ea\u652f\u6301\u5c06 AI \u63a8\u8350\u5e94\u7528\u5230\u65b0 SAEHD \u6a21\u578b\u3002",
+  "aiInvalidModelName": "\u6a21\u578b\u540d\u79f0\u53ea\u80fd\u5305\u542b\u82f1\u6587\u5b57\u6bcd\u3001\u6570\u5b57\u3001\u70b9\u3001\u4e0b\u5212\u7ebf\u548c\u77ed\u6a2a\u7ebf\u3002",
+  "aiExistingModel": "\u8fd9\u4e2a\u540d\u79f0\u7684 SAEHD \u6a21\u578b\u5df2\u5b58\u5728\u3002AI \u4e0d\u4f1a\u6539\u5199\u5df2\u8bad\u7ec3\u6a21\u578b\uff0c\u8bf7\u8f93\u5165\u4e00\u4e2a\u65b0\u540d\u79f0\u3002",
+  "aiApplied": "AI \u63a8\u8350\u5df2\u5e94\u7528\uff1a\u65b0\u6a21\u578b\u4f1a\u6cbf\u7528 RTX 5090 \u9884\u8bbe\uff0c\u73b0\u5728\u53ef\u4ee5\u5f00\u59cb\u8bad\u7ec3\u3002",
+  "aiApplyFailed": "\u63a8\u8350\u914d\u7f6e\u5e94\u7528\u5931\u8d25",
+  "aiCopied": "AI \u62a5\u544a\u5df2\u590d\u5236\u3002",
   "start": "\u5f00\u59cb\u8bad\u7ec3",
   "stop": "\u4fdd\u5b58\u5e76\u505c\u6b62",
   "showPreview": "\u663e\u793a\u9884\u89c8",
@@ -464,10 +483,17 @@ $logPanel.Anchor = 'Top,Bottom,Left,Right'
 $form.Controls.Add($logPanel)
 
 $logTitle = New-Object Windows.Forms.Label
-$logTitle.Text = $T.log
+$logTitle.Text = $T.aiAssistant
 $logTitle.Font = New-Object Drawing.Font('Microsoft YaHei UI', 13, [Drawing.FontStyle]::Bold)
 $logTitle.SetBounds(20, 14, 300, 30)
 $logPanel.Controls.Add($logTitle)
+
+$logTabButton = New-Object Windows.Forms.Button
+$logTabButton.Text = $T.logTab
+$logTabButton.SetBounds(570, 12, 110, 34)
+$logTabButton.Anchor = 'Top,Right'
+Style-Button $logTabButton $surfaceRaised
+$logPanel.Controls.Add($logTabButton)
 
 $aiButton = New-Object Windows.Forms.Button
 $aiButton.Text = $T.aiAssistant
@@ -486,7 +512,86 @@ $logBox.DetectUrls = $false
 $logBox.WordWrap = $false
 $logBox.SetBounds(20, 52, 790, 566)
 $logBox.Anchor = 'Top,Bottom,Left,Right'
+$logBox.Visible = $false
 $logPanel.Controls.Add($logBox)
+
+$aiPanel = New-Object Windows.Forms.Panel
+$aiPanel.BackColor = $surface
+$aiPanel.SetBounds(20, 52, 790, 566)
+$aiPanel.Anchor = 'Top,Bottom,Left,Right'
+$aiPanel.Visible = $true
+$logPanel.Controls.Add($aiPanel)
+
+$aiPrivacyLabel = New-Object Windows.Forms.Label
+$aiPrivacyLabel.Text = $T.aiPrivacy
+$aiPrivacyLabel.ForeColor = $muted
+$aiPrivacyLabel.SetBounds(0, 0, 570, 24)
+$aiPanel.Controls.Add($aiPrivacyLabel)
+
+$aiStatusLabel = New-Object Windows.Forms.Label
+$aiStatusLabel.Text = $T.ready
+$aiStatusLabel.ForeColor = $success
+$aiStatusLabel.TextAlign = 'MiddleRight'
+$aiStatusLabel.SetBounds(590, 0, 200, 24)
+$aiStatusLabel.Anchor = 'Top,Right'
+$aiPanel.Controls.Add($aiStatusLabel)
+
+$aiSummaryLabel = New-Object Windows.Forms.Label
+$aiSummaryLabel.Text = $T.aiIdle
+$aiSummaryLabel.ForeColor = $text
+$aiSummaryLabel.Font =
+    New-Object Drawing.Font('Microsoft YaHei UI', 9, [Drawing.FontStyle]::Bold)
+$aiSummaryLabel.SetBounds(0, 26, 790, 30)
+$aiSummaryLabel.Anchor = 'Top,Left,Right'
+$aiSummaryLabel.AutoEllipsis = $true
+$aiPanel.Controls.Add($aiSummaryLabel)
+
+$aiWorkspaceButton = New-Object Windows.Forms.Button
+$aiWorkspaceButton.Text = $T.aiWorkspace
+$aiWorkspaceButton.Tag = 'workspace'
+$aiWorkspaceButton.SetBounds(0, 64, 116, 36)
+Style-Button $aiWorkspaceButton $surfaceRaised
+$aiPanel.Controls.Add($aiWorkspaceButton)
+
+$aiTrainingButton = New-Object Windows.Forms.Button
+$aiTrainingButton.Text = $T.aiTraining
+$aiTrainingButton.Tag = 'training'
+$aiTrainingButton.SetBounds(126, 64, 116, 36)
+Style-Button $aiTrainingButton $surfaceRaised
+$aiPanel.Controls.Add($aiTrainingButton)
+
+$aiRecommendButton = New-Object Windows.Forms.Button
+$aiRecommendButton.Text = $T.aiRecommend
+$aiRecommendButton.Tag = 'recommend'
+$aiRecommendButton.SetBounds(252, 64, 116, 36)
+Style-Button $aiRecommendButton $accent
+$aiPanel.Controls.Add($aiRecommendButton)
+
+$aiApplyButton = New-Object Windows.Forms.Button
+$aiApplyButton.Text = $T.aiApply
+$aiApplyButton.Enabled = $false
+$aiApplyButton.SetBounds(378, 64, 176, 36)
+Style-Button $aiApplyButton $success
+$aiPanel.Controls.Add($aiApplyButton)
+
+$aiCopyButton = New-Object Windows.Forms.Button
+$aiCopyButton.Text = $T.aiCopy
+$aiCopyButton.Enabled = $false
+$aiCopyButton.SetBounds(564, 64, 112, 36)
+Style-Button $aiCopyButton $surfaceRaised
+$aiPanel.Controls.Add($aiCopyButton)
+
+$aiReportBox = New-Object Windows.Forms.RichTextBox
+$aiReportBox.ReadOnly = $true
+$aiReportBox.BackColor = $background
+$aiReportBox.ForeColor = [Drawing.Color]::FromArgb(215, 222, 233)
+$aiReportBox.BorderStyle = 'None'
+$aiReportBox.Font = New-Object Drawing.Font('Microsoft YaHei UI', 9)
+$aiReportBox.WordWrap = $true
+$aiReportBox.Text = $T.aiIdle
+$aiReportBox.SetBounds(0, 112, 790, 454)
+$aiReportBox.Anchor = 'Top,Bottom,Left,Right'
+$aiPanel.Controls.Add($aiReportBox)
 
 $form.ResumeLayout($false)
 
@@ -499,6 +604,316 @@ function Add-Log([string] $Line) {
     }
     $logBox.SelectionStart = $logBox.TextLength
     $logBox.ScrollToCaret()
+}
+
+function Show-AiView([bool] $ShowAi) {
+    $aiPanel.Visible = $ShowAi
+    $logBox.Visible = -not $ShowAi
+    if ($ShowAi) {
+        $logTitle.Text = $T.aiAssistant
+        $aiButton.BackColor = $accent
+        $logTabButton.BackColor = $surfaceRaised
+        $aiPanel.BringToFront()
+    }
+    else {
+        $logTitle.Text = $T.logTab
+        $logTabButton.BackColor = $accent
+        $aiButton.BackColor = $surfaceRaised
+        $logBox.BringToFront()
+    }
+}
+
+function Test-AiProperty($Object, [string] $Name) {
+    return $null -ne $Object -and
+           $Object.PSObject.Properties.Name -contains $Name
+}
+
+function Set-AiBusy([bool] $Busy) {
+    $analysisBusy = $Busy -or $commandRunner.Active
+    foreach ($button in @(
+        $aiWorkspaceButton, $aiTrainingButton, $aiRecommendButton
+    )) {
+        $button.Enabled = -not $analysisBusy
+    }
+    $canApply = $false
+    if (-not $Busy -and -not $script:aiApplied -and
+        $null -ne $script:aiPayload -and
+        (Test-AiProperty $script:aiPayload 'mode') -and
+        [string]$script:aiPayload.mode -eq 'recommend' -and
+        (Test-AiProperty $script:aiPayload 'can_apply') -and
+        (Test-AiProperty $script:aiPayload 'recommended_options') -and
+        [bool]$script:aiPayload.can_apply -and
+        [string]$modelTypeBox.SelectedItem -eq 'SAEHD' -and
+        -not $script:training -and -not $commandRunner.Active) {
+        $canApply = $true
+    }
+    $aiApplyButton.Enabled = $canApply
+    $aiCopyButton.Enabled =
+        (-not $Busy) -and
+        (-not [string]::IsNullOrWhiteSpace($aiReportBox.Text)) -and
+        $aiReportBox.Text -ne $T.aiIdle
+}
+
+function Get-AiRecentLogBase64 {
+    $result = Get-Docker ('logs --tail 160 ' + $containerName) 3500
+    if ($result.ExitCode -ne 0 -or
+        [string]::IsNullOrWhiteSpace($result.Output)) {
+        return ''
+    }
+    return [Convert]::ToBase64String(
+        [Text.Encoding]::UTF8.GetBytes($result.Output))
+}
+
+function Save-AiPayload($Payload) {
+    try {
+        $directory = Join-Path $workspaceBox.Text '.dfl-ai'
+        [IO.Directory]::CreateDirectory($directory) | Out-Null
+        $path = Join-Path $directory 'last-report.json'
+        $temporary = $path + '.tmp'
+        $Payload | ConvertTo-Json -Depth 10 |
+            Set-Content -LiteralPath $temporary -Encoding UTF8
+        Move-Item -LiteralPath $temporary -Destination $path -Force
+    }
+    catch {
+        Add-Log ('AI report persistence: ' + $_.Exception.Message)
+    }
+}
+
+function Load-AiPayload {
+    $script:aiPayload = $null
+    $script:aiApplied = $false
+    $aiReportBox.Text = $T.aiIdle
+    $aiSummaryLabel.Text = $T.aiIdle
+    $aiStatusLabel.Text = $T.ready
+    $aiStatusLabel.ForeColor = $success
+    Set-AiBusy $false
+    $path = Join-Path $workspaceBox.Text '.dfl-ai\last-report.json'
+    if (-not (Test-Path -LiteralPath $path)) { return }
+    try {
+        $payload = Get-Content -LiteralPath $path -Raw -Encoding UTF8 |
+            ConvertFrom-Json
+        $script:aiPayload = $payload
+        $script:aiApplied = $false
+        $aiReportBox.Text = ([string]$payload.report).Replace(
+            '/workspace', [IO.Path]::GetFullPath($workspaceBox.Text))
+        Update-AiSummary $payload
+        $aiStatusLabel.Text = $T.aiComplete
+        $aiStatusLabel.ForeColor = $success
+        Set-AiBusy $false
+    }
+    catch {
+        Add-Log ('AI report restore: ' + $_.Exception.Message)
+    }
+}
+
+function Start-AiAnalysis([string] $Mode) {
+    if ($aiRunner.Active -or $commandRunner.Active) {
+        [Windows.Forms.MessageBox]::Show(
+            $T.busy, $T.aiAssistant, 'OK', 'Information') | Out-Null
+        return
+    }
+    if (-not (Test-Workspace $workspaceBox.Text)) {
+        [Windows.Forms.MessageBox]::Show(
+            $T.invalidWorkspace, $T.aiAssistant, 'OK', 'Warning') | Out-Null
+        return
+    }
+    $image = Get-Docker 'image inspect deepfacelab:blackwell' 3500
+    if ($image.ExitCode -ne 0) {
+        [Windows.Forms.MessageBox]::Show(
+            $T.aiImageMissing, $T.aiAssistant, 'OK', 'Warning') | Out-Null
+        return
+    }
+
+    $state = Get-ContainerState
+    $logBase64 = if ($Mode -eq 'training' -and $state) {
+        Get-AiRecentLogBase64
+    }
+    else { '' }
+    $arguments = 'compose --ansi never -f ' + (Quote-Arg $composeFile) +
+                 ' run --rm -T'
+    if ($state) {
+        $arguments += ' -e DFL_AI_CONTAINER_STATE=' + (Quote-Arg $state)
+    }
+    if ($logBase64) {
+        $arguments += ' -e DFL_AI_LOG_B64=' + (Quote-Arg $logBase64)
+    }
+    $arguments += ' deepfacelab dfl_ai_assistant.py' +
+                  ' --mode ' + $Mode +
+                  ' --workspace /workspace --sample-limit 120'
+    if ($Mode -eq 'recommend') {
+        $arguments += ' --model-type ' +
+                      (Quote-Arg ([string]$modelTypeBox.SelectedItem))
+    }
+
+    Show-AiView $true
+    $script:aiOutputLines.Clear()
+    $script:aiMode = $Mode
+    $script:aiPayload = $null
+    $script:aiApplied = $false
+    $aiStatusLabel.Text = $T.aiRunning
+    $aiStatusLabel.ForeColor = $accent
+    $aiSummaryLabel.Text = $T.aiRunning
+    $aiReportBox.Text = $T.aiRunning
+    Set-AiBusy $true
+    $aiRunner.Start(
+        $docker, $arguments, $repoRoot,
+        (New-DockerEnvironment $workspaceBox.Text))
+}
+
+function Update-AiSummary($Payload) {
+    $nextAction = ''
+    if (Test-AiProperty $Payload 'next_action') {
+        $nextAction = [string]$Payload.next_action
+    }
+    switch ([string]$Payload.mode) {
+        'workspace' {
+            $aiSummaryLabel.Text =
+                ('SRC {0} / DST {1} | {2}/100 | {3}' -f
+                    $Payload.src.count, $Payload.dst.count,
+                    $Payload.score, $nextAction)
+        }
+        'training' {
+            $aiSummaryLabel.Text =
+                ('{0} | {1}' -f $Payload.state, $nextAction)
+        }
+        'recommend' {
+            $batch = '?'
+            if (Test-AiProperty $Payload 'batch_recommended') {
+                $batch = [string]$Payload.batch_recommended
+            }
+            $aiSummaryLabel.Text =
+                ('{0} | {1}px | Batch {2} | {3}' -f
+                    $Payload.gpu.name, $Payload.resolution,
+                    $batch, $nextAction)
+        }
+        default { $aiSummaryLabel.Text = $T.aiIdle }
+    }
+}
+
+function Complete-AiOperation {
+    foreach ($line in $aiRunner.Drain()) {
+        $script:aiOutputLines.Add($line)
+    }
+    $exitCode = $aiRunner.ExitCode
+    $mode = $script:aiMode
+    $script:aiMode = ''
+
+    if ($mode -eq 'apply') {
+        if ($exitCode -eq 0) {
+            $script:aiApplied = $true
+            $aiReportBox.AppendText(
+                [Environment]::NewLine + [Environment]::NewLine + $T.aiApplied)
+            $aiSummaryLabel.Text = $T.aiApplied
+            $aiStatusLabel.Text = $T.aiComplete
+            $aiStatusLabel.ForeColor = $success
+            Refresh-Models
+        }
+        else {
+            $aiReportBox.AppendText(
+                [Environment]::NewLine + $T.aiApplyFailed +
+                [Environment]::NewLine +
+                ($script:aiOutputLines -join [Environment]::NewLine))
+            $aiStatusLabel.Text = $T.aiApplyFailed
+            $aiStatusLabel.ForeColor = $danger
+        }
+        Set-AiBusy $false
+        return
+    }
+
+    $begin = $script:aiOutputLines.IndexOf('DFL_AI_JSON_BEGIN')
+    $end = $script:aiOutputLines.IndexOf('DFL_AI_JSON_END')
+    if ($exitCode -eq 0 -and $begin -ge 0 -and $end -gt $begin) {
+        try {
+            $jsonLines = $script:aiOutputLines.GetRange(
+                $begin + 1, $end - $begin - 1)
+            $payload = ($jsonLines -join [Environment]::NewLine) |
+                ConvertFrom-Json
+            $script:aiPayload = $payload
+            $aiReportBox.Text = ([string]$payload.report).Replace(
+                '/workspace', [IO.Path]::GetFullPath($workspaceBox.Text))
+            Update-AiSummary $payload
+            Save-AiPayload $payload
+            $aiStatusLabel.Text = $T.aiComplete
+            $aiStatusLabel.ForeColor = $success
+        }
+        catch {
+            $aiReportBox.Text = $_.Exception.Message
+            $aiStatusLabel.Text = $T.aiFailed
+            $aiStatusLabel.ForeColor = $danger
+        }
+    }
+    else {
+        $aiReportBox.Text = $T.aiFailed + [Environment]::NewLine +
+            ($script:aiOutputLines -join [Environment]::NewLine)
+        $aiStatusLabel.Text = $T.aiFailed
+        $aiStatusLabel.ForeColor = $danger
+    }
+    Set-AiBusy $false
+}
+
+function Apply-AiRecommendation {
+    if ($null -eq $script:aiPayload -or
+        -not (Test-AiProperty $script:aiPayload 'mode') -or
+        [string]$script:aiPayload.mode -ne 'recommend') {
+        [Windows.Forms.MessageBox]::Show(
+            $T.aiNoRecommendation, $T.aiAssistant, 'OK', 'Information') |
+            Out-Null
+        return
+    }
+    if (-not (Test-AiProperty $script:aiPayload 'can_apply') -or
+        -not (Test-AiProperty $script:aiPayload 'recommended_options') -or
+        -not [bool]$script:aiPayload.can_apply -or
+        [string]$modelTypeBox.SelectedItem -ne 'SAEHD') {
+        [Windows.Forms.MessageBox]::Show(
+            $T.aiSaeOnly, $T.aiAssistant, 'OK', 'Information') | Out-Null
+        return
+    }
+    if ($script:training -or $commandRunner.Active -or $aiRunner.Active) {
+        [Windows.Forms.MessageBox]::Show(
+            $T.busy, $T.aiAssistant, 'OK', 'Information') | Out-Null
+        return
+    }
+
+    $modelName = $modelNameBox.Text.Trim()
+    if ([string]::IsNullOrWhiteSpace($modelName)) {
+        $modelName = 'ai-dfm'
+        $modelNameBox.Text = $modelName
+    }
+    if ($modelName -notmatch '^[A-Za-z0-9_.-]+$') {
+        [Windows.Forms.MessageBox]::Show(
+            $T.aiInvalidModelName, $T.aiAssistant, 'OK', 'Warning') |
+            Out-Null
+        return
+    }
+    $existingModel = Join-Path $workspaceBox.Text (
+        'model\' + $modelName + '_SAEHD_data.dat')
+    if (Test-Path -LiteralPath $existingModel) {
+        [Windows.Forms.MessageBox]::Show(
+            $T.aiExistingModel, $T.aiAssistant, 'OK', 'Warning') | Out-Null
+        return
+    }
+
+    $options = $script:aiPayload.recommended_options
+    $arguments = 'compose --ansi never -f ' + (Quote-Arg $composeFile) +
+                 ' run --rm -T deepfacelab dfl_pipeline.py' +
+                 ' --workspace /workspace preset' +
+                 ' --model-name ' + (Quote-Arg $modelName) +
+                 ' --resolution ' + [int]$options.resolution +
+                 ' --batch-size ' + [int]$options.batch_size +
+                 ' --base-iter ' + [int]$options.base_iterations +
+                 ' --final-iter ' + [int]$options.final_iterations
+    if ([bool]$options.use_xseg) { $arguments += ' --use-xseg' }
+
+    $modelTypeBox.SelectedItem = 'SAEHD'
+    $silentCheck.Checked = $true
+    $script:aiOutputLines.Clear()
+    $script:aiMode = 'apply'
+    $aiStatusLabel.Text = $T.aiRunning
+    $aiStatusLabel.ForeColor = $accent
+    Set-AiBusy $true
+    $aiRunner.Start(
+        $docker, $arguments, $repoRoot,
+        (New-DockerEnvironment $workspaceBox.Text))
 }
 
 function Update-NativePreview([switch] $Show) {
@@ -570,10 +985,16 @@ function Set-Busy([bool] $Busy) {
     $workflowButton.Enabled = -not $Busy
     $oneClickButton.Enabled = -not $Busy
     $showPreviewButton.Enabled = $script:training
+    Set-AiBusy $aiRunner.Active
 }
 
 $commandRunner = New-Object DflGui.ProcessMonitor
 $logRunner = New-Object DflGui.ProcessMonitor
+$aiRunner = New-Object DflGui.ProcessMonitor
+$script:aiOutputLines = New-Object Collections.Generic.List[string]
+$script:aiMode = ''
+$script:aiPayload = $null
+$script:aiApplied = $false
 $script:operation = ''
 $script:training = $false
 $script:closeAfterStop = $false
@@ -588,6 +1009,7 @@ function Start-Operation([string] $Name, [string] $Arguments, [string] $Status) 
         [Windows.Forms.MessageBox]::Show($T.busy, $T.title, 'OK', 'Information') | Out-Null
         return
     }
+    Show-AiView $false
     $script:operation = $Name
     $runtimeLabel.Text = $T.runtime + ': ' + $Status
     $runtimeLabel.ForeColor = $accent
@@ -615,11 +1037,18 @@ $browseButton.Add_Click({
     if ($dialog.ShowDialog($form) -eq 'OK') {
         $workspaceBox.Text = $dialog.SelectedPath
         Refresh-Models
+        Load-AiPayload
     }
     $dialog.Dispose()
 })
-$modelTypeBox.Add_SelectedIndexChanged({ Refresh-Models })
-$workspaceBox.Add_Leave({ Refresh-Models })
+$modelTypeBox.Add_SelectedIndexChanged({
+    Refresh-Models
+    Set-AiBusy $aiRunner.Active
+})
+$workspaceBox.Add_Leave({
+    Refresh-Models
+    Load-AiPayload
+})
 
 $openButton.Add_Click({
     if (Test-Path -LiteralPath $workspaceBox.Text) {
@@ -671,26 +1100,23 @@ $oneClickButton.Add_Click({
     }
 })
 
-$aiButton.Add_Click({
-    $assistant = Get-Process -Name powershell -ErrorAction SilentlyContinue |
-        Where-Object { $_.MainWindowTitle -eq $T.aiTitle } |
-        Select-Object -First 1
-    if ($null -ne $assistant) {
-        [DflGui.WindowTools]::ShowWindow($assistant.MainWindowHandle, 9) | Out-Null
-        [DflGui.WindowTools]::SetForegroundWindow(
-            $assistant.MainWindowHandle) | Out-Null
-    }
-    else {
-        $assistantScript = Join-Path $repoRoot 'DeepFaceLab-AI.ps1'
-        if (Test-Path -LiteralPath $assistantScript) {
-            $arguments = '-NoLogo -NoProfile -STA -ExecutionPolicy Bypass -File ' +
-                         (Quote-Arg $assistantScript) +
-                         ' -Workspace ' + (Quote-Arg $workspaceBox.Text) +
-                         ' -ModelType ' +
-                         (Quote-Arg ([string]$modelTypeBox.SelectedItem))
-            Start-Process -FilePath 'powershell.exe' -ArgumentList $arguments `
-                -WorkingDirectory $repoRoot -WindowStyle Hidden | Out-Null
-        }
+$logTabButton.Add_Click({ Show-AiView $false })
+$aiButton.Add_Click({ Show-AiView $true })
+foreach ($button in @(
+    $aiWorkspaceButton, $aiTrainingButton, $aiRecommendButton
+)) {
+    $button.Add_Click({
+        param($sender, $eventArgs)
+        Start-AiAnalysis ([string]$sender.Tag)
+    })
+}
+$aiApplyButton.Add_Click({ Apply-AiRecommendation })
+$aiCopyButton.Add_Click({
+    if (-not [string]::IsNullOrWhiteSpace($aiReportBox.Text) -and
+        $aiReportBox.Text -ne $T.aiIdle) {
+        [Windows.Forms.Clipboard]::SetText($aiReportBox.Text)
+        $aiStatusLabel.Text = $T.aiCopied
+        $aiStatusLabel.ForeColor = $success
     }
 })
 
@@ -755,6 +1181,12 @@ $timer.Interval = 1000
 $timer.Add_Tick({
     foreach ($line in $commandRunner.Drain()) { Add-Log $line }
     foreach ($line in $logRunner.Drain()) { Add-Log $line }
+    foreach ($line in $aiRunner.Drain()) {
+        $script:aiOutputLines.Add($line)
+    }
+    if ($script:aiMode -and $aiRunner.Complete) {
+        Complete-AiOperation
+    }
 
     if ($script:operation -and $commandRunner.Complete) {
         foreach ($line in $commandRunner.Drain()) { Add-Log $line }
@@ -819,6 +1251,7 @@ $timer.Add_Tick({
             $script:lastPreviewTicks = 0L
             if (-not $commandRunner.Active) { Set-Busy $false }
         }
+        Set-AiBusy $aiRunner.Active
         $script:lastContainerState = $state
     }
 
@@ -852,6 +1285,7 @@ $previewForm.Add_FormClosing({
 
 $form.Add_Shown({
     Refresh-Models
+    Load-AiPayload
     $form.ActiveControl = $startButton
     Add-Log $T.ready
     $initialState = Get-ContainerState
@@ -890,12 +1324,14 @@ $form.Add_FormClosing({
     $previewForm.Close()
     $logRunner.StopMonitor()
     if ($commandRunner.Active) { $commandRunner.StopMonitor() }
+    if ($aiRunner.Active) { $aiRunner.StopMonitor() }
 })
 
 [void]$form.ShowDialog()
 $timer.Dispose()
 $commandRunner.Dispose()
 $logRunner.Dispose()
+$aiRunner.Dispose()
 $oldPreviewImage = $previewPicture.Image
 if ($null -ne $oldPreviewImage) { $oldPreviewImage.Dispose() }
 $previewForm.Dispose()

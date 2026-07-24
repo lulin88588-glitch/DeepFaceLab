@@ -152,7 +152,7 @@ interaction use the proven native Windows tools.
 | Training Console | Model selection, start/stop, GPU telemetry, logs, environment tools, and preview control |
 | Workflow Workbench | Material, SRC, DST, XSeg, training/export, and merge/output operations |
 | One-click DFM Pipeline | Recoverable media-to-DFM workflow with quality screening, two-phase training, export, and validation |
-| Local AI Assistant | Read-only material quality checks, training diagnosis, and RTX 5090-aware configuration guidance |
+| Embedded AI Center | Main-console material checks, training diagnosis, RTX 5090 recommendations, and safe new-model preset application |
 | Native interactive runtime | Manual face extraction, XSeg editor, sorting prompts, DFM export, and interactive merger |
 | Windows preview window | Periodically refreshed training preview without relying on a WSLg copy-mode window |
 
@@ -203,7 +203,8 @@ instances.
 
 5. Use **Open Workbench** for the complete material-to-output workflow.
 
-6. Use **AI Assistant** from either window for local diagnostics and guidance.
+6. Use the **AI Center** tab built into the Training Console for local
+   diagnostics, recommendations, and safe preset application.
 
 7. Use **One-click DFM Training** for a guided project that ends with a
    validated DeepFaceLive model.
@@ -262,7 +263,8 @@ run, especially when either faceset is small.
 
 ### Local AI assistant
 
-`DeepFaceLab-AI.ps1` provides three focused actions:
+The Training Console opens directly on its embedded **AI Center**. It provides
+four connected actions:
 
 - **Check Current Workspace** samples SRC and DST aligned faces, including
   `faceset.pak`, and reports image count, resolution, sharpness, exposure,
@@ -272,11 +274,17 @@ run, especially when either faceset is small.
 - **Generate Recommended Configuration** reads the local NVIDIA GPU and free
   VRAM, then proposes a conservative SAEHD starting point. Existing model
   structure is never changed automatically.
+- **Apply to New Model** writes the recommended resolution, batch size,
+  two-phase iteration targets, XSeg setting, and RTX 5090-oriented SAEHD
+  defaults for a new model name. It refuses to overwrite an existing trained
+  model.
 
 All analysis runs locally through `dfl_ai_assistant.py` in the Blackwell
-container. Face images and logs are not uploaded, and the assistant only reads
-the workspace. Its recommendations are diagnostics rather than automatic file
-cleanup or unattended training changes.
+container. Face images and logs are not uploaded. The latest structured report
+is persisted under `.dfl-ai/last-report.json` in the selected workspace and is
+restored when the console reopens. The standalone `DeepFaceLab-AI.ps1` window
+remains available as a compatibility entry, while the main console is the
+primary interface.
 
 ### Workspace layout
 

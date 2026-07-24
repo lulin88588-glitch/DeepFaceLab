@@ -342,10 +342,38 @@ def _render_issues(issues: list[dict[str, str]]) -> list[str]:
     return lines
 
 
+def _decision_from_issues(
+    score: int, issues: list[dict[str, str]]
+) -> dict[str, Any]:
+    severity_order = {"高": 0, "中": 1, "低": 2}
+    ordered = sorted(
+        issues, key=lambda item: severity_order.get(item["severity"], 9)
+    )
+    has_high = any(issue["severity"] == "高" for issue in issues)
+    if score < 40 or has_high:
+        risk_level = "blocked"
+    elif score < 85 or issues:
+        risk_level = "warning"
+    else:
+        risk_level = "ready"
+    can_train = score >= 65 and not has_high
+    next_action = (
+        ordered[0]["action"]
+        if ordered
+        else "素材状态良好，可以生成推荐配置并开始训练。"
+    )
+    return {
+        "risk_level": risk_level,
+        "can_train": can_train,
+        "next_action": next_action,
+    }
+
+
 def workspace_analysis(workspace: Path, sample_limit: int) -> dict[str, Any]:
     src = analyze_faceset(workspace / "data_src" / "aligned", sample_limit)
     dst = analyze_faceset(workspace / "data_dst" / "aligned", sample_limit)
     issues, score = _workspace_issues(src, dst)
+    decision = _decision_from_issues(score, issues)
     report_lines = [
         "本地 AI 素材质检",
         "=" * 56,
@@ -369,6 +397,7 @@ def workspace_analysis(workspace: Path, sample_limit: int) -> dict[str, Any]:
         "src": src,
         "dst": dst,
         "issues": issues,
+        **decision,
         "report": "\n".join(report_lines),
     }
 
@@ -483,6 +512,15 @@ def training_analysis(workspace: Path, sample_limit: int) -> dict[str, Any]:
         recommendations.append("尚无可读预览图；模型加载完成后再进行视觉判断。")
     if not models:
         recommendations.append("未找到模型摘要，首次训练需要完成交互式模型配置。")
+    health = (
+        "error"
+        if errors
+        else "running"
+        if state == "running"
+        else "needs_attention"
+        if material["risk_level"] != "ready"
+        else "idle"
+    )
 
     report_lines = [
         "本地 AI 训练状态诊断",
@@ -539,6 +577,8 @@ def training_analysis(workspace: Path, sample_limit: int) -> dict[str, Any]:
         "models": models,
         "preview": preview,
         "log_errors": errors,
+        "health": health,
+        "next_action": recommendations[0],
         "report": "\n".join(report_lines),
     }
 
@@ -575,6 +615,18 @@ def recommendation_analysis(
     material = workspace_analysis(workspace, sample_limit)
     models = _parse_model_summaries(workspace / "model")
     gpu = _gpu_info()
+    material_decision = _decision_from_issues(
+        material["score"], material.get("issues", [])
+    )
+    material_can_train = material.get(
+        "can_train", material_decision["can_train"]
+    )
+    material_risk = material.get(
+        "risk_level", material_decision["risk_level"]
+    )
+    material_next_action = material.get(
+        "next_action", material_decision["next_action"]
+    )
     vram_gib = gpu["memory_total_mib"] / 1024.0
     src_count = material["src"]["count"]
     dst_count = material["dst"]["count"]
@@ -594,15 +646,19 @@ def recommendation_analysis(
     if vram_gib >= 28:
         resolution = 256
         batch = "8-12"
+        batch_recommended = 8
     elif vram_gib >= 20:
         resolution = 224
         batch = "6-8"
+        batch_recommended = 6
     elif vram_gib >= 12:
         resolution = 192
         batch = "4-6"
+        batch_recommended = 4
     else:
         resolution = 160
         batch = "2-4"
+        batch_recommended = 2
 
     model_type = requested_model or "SAEHD"
     advice = [
@@ -664,6 +720,21 @@ def recommendation_analysis(
         "model_type": model_type,
         "resolution": resolution,
         "batch": batch,
+        "batch_recommended": batch_recommended,
+        "can_apply": model_type == "SAEHD",
+        "can_train": material_can_train,
+        "risk_level": material_risk,
+        "next_action": material_next_action,
+        "recommended_options": {
+            "resolution": resolution,
+            "batch_size": batch_recommended,
+            "face_type": "whole_face",
+            "architecture": "df-ud",
+            "optimizer": "AdaBelief",
+            "base_iterations": 300_000,
+            "final_iterations": 500_000,
+            "use_xseg": True,
+        },
         "report": "\n".join(report_lines),
     }
 

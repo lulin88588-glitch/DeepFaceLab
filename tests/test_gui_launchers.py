@@ -60,6 +60,22 @@ class HiddenGuiLauncherTest(unittest.TestCase):
             self.assertTrue(icon.is_file())
             self.assertGreater(icon.stat().st_size, 1024)
 
+    def test_training_console_embeds_ai_core_workflow(self):
+        source = (self.repo_root / "DeepFaceLab-GUI.ps1").read_text(
+            encoding="utf-8"
+        )
+        for contract in (
+            "$aiPanel.Visible = $true",
+            "function Start-AiAnalysis",
+            "function Apply-AiRecommendation",
+            "dfl_ai_assistant.py",
+            "dfl_pipeline.py",
+            "DFL_AI_JSON_BEGIN",
+            "Save-AiPayload",
+            "recommended_options",
+        ):
+            self.assertIn(contract, source)
+
 
 if __name__ == "__main__":
     unittest.main()
