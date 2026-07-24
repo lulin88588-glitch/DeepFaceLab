@@ -38,6 +38,28 @@ class HiddenGuiLauncherTest(unittest.TestCase):
             self.assertIn("AppActivate", source)
             self.assertIn("ReleaseMutex", source)
 
+    def test_primary_windows_have_distinct_taskbar_icons(self):
+        expected = {
+            "DeepFaceLab-GUI.ps1": (
+                "assets\\dfl-console.ico",
+                "lulin88588.DeepFaceLab.TrainingConsole",
+            ),
+            "DeepFaceLab-OneClick.ps1": (
+                "assets\\dfl-oneclick.ico",
+                "lulin88588.DeepFaceLab.OneClickDfm",
+            ),
+        }
+        for relative_path, (icon_path, app_id) in expected.items():
+            source = (self.repo_root / relative_path).read_text(
+                encoding="utf-8"
+            )
+            self.assertIn(icon_path, source)
+            self.assertIn(app_id, source)
+        for icon_name in ("dfl-console.ico", "dfl-oneclick.ico"):
+            icon = self.repo_root / "assets" / icon_name
+            self.assertTrue(icon.is_file())
+            self.assertGreater(icon.stat().st_size, 1024)
+
 
 if __name__ == "__main__":
     unittest.main()

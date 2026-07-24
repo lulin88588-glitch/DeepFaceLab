@@ -193,9 +193,15 @@ namespace DflOneClick {
         public static extern bool SetForegroundWindow(IntPtr hWnd);
         [DllImport("user32.dll")]
         public static extern bool ShowWindow(IntPtr hWnd, int command);
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+        public static extern int SetCurrentProcessExplicitAppUserModelID(
+            string appId);
     }
 }
 '@ -Language CSharp
+
+[void][DflOneClick.ProcessMonitor]::SetCurrentProcessExplicitAppUserModelID(
+    'lulin88588.DeepFaceLab.OneClickDfm')
 
 [Windows.Forms.Application]::EnableVisualStyles()
 
@@ -256,6 +262,12 @@ function Style-Button($Button, [Drawing.Color] $Color) {
 
 $form = New-Object Windows.Forms.Form
 $form.Text = $T.title
+$script:appIcon = $null
+$appIconPath = Join-Path $repoRoot 'assets\dfl-oneclick.ico'
+if (Test-Path -LiteralPath $appIconPath) {
+    $script:appIcon = New-Object Drawing.Icon($appIconPath)
+    $form.Icon = $script:appIcon
+}
 $form.ClientSize = New-Object Drawing.Size(1480, 900)
 $form.MinimumSize = New-Object Drawing.Size(1280, 800)
 $form.StartPosition = 'CenterScreen'
@@ -1242,5 +1254,6 @@ $timer.Start()
 [void]$form.ShowDialog()
 $timer.Dispose()
 $form.Dispose()
+if ($null -ne $script:appIcon) { $script:appIcon.Dispose() }
 try { $script:singleInstanceMutex.ReleaseMutex() } catch { }
 $script:singleInstanceMutex.Dispose()

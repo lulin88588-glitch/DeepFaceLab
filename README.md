@@ -189,7 +189,9 @@ instances.
 3. Double-click `DeepFaceLab-GUI.vbs` for a console-free launch. The
    `DeepFaceLab-GUI.cmd` compatibility entry delegates to the same hidden
    launcher, but Windows may briefly show a command window while opening any
-   `.cmd` file.
+   `.cmd` file. The blue dashboard icon identifies the Training Console in
+   the taskbar; the purple face-and-arrow icon identifies the one-click DFM
+   workflow.
 
 4. In the Training Console:
 

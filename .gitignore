@@ -11,6 +11,8 @@
 !*.ps1
 !*.cmd
 !*.vbs
+!assets/
+!assets/*.ico
 !docker/
 !docker/*.sh
 !tests/

@@ -76,6 +76,13 @@ using System.Diagnostics;
 using System.Text;
 
 namespace DflGui {
+    public static class AppIdentity {
+        [System.Runtime.InteropServices.DllImport(
+            "shell32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+        public static extern int SetCurrentProcessExplicitAppUserModelID(
+            string appId);
+    }
+
     public sealed class CaptureResult {
         public int ExitCode;
         public string Output;
@@ -181,6 +188,9 @@ namespace DflGui {
 }
 '@ -Language CSharp
 
+[void][DflGui.AppIdentity]::SetCurrentProcessExplicitAppUserModelID(
+    'lulin88588.DeepFaceLab.TrainingConsole')
+
 [System.Windows.Forms.Application]::EnableVisualStyles()
 
 $repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -226,6 +236,12 @@ $font = New-Object Drawing.Font('Microsoft YaHei UI', 9)
 
 $form = New-Object Windows.Forms.Form
 $form.Text = $T.title
+$script:appIcon = $null
+$appIconPath = Join-Path $repoRoot 'assets\dfl-console.ico'
+if (Test-Path -LiteralPath $appIconPath) {
+    $script:appIcon = New-Object Drawing.Icon($appIconPath)
+    $form.Icon = $script:appIcon
+}
 $form.ClientSize = New-Object Drawing.Size(1280, 800)
 $form.MinimumSize = New-Object Drawing.Size(1120, 820)
 $form.StartPosition = 'CenterScreen'
@@ -884,5 +900,6 @@ $oldPreviewImage = $previewPicture.Image
 if ($null -ne $oldPreviewImage) { $oldPreviewImage.Dispose() }
 $previewForm.Dispose()
 $form.Dispose()
+if ($null -ne $script:appIcon) { $script:appIcon.Dispose() }
 try { $script:singleInstanceMutex.ReleaseMutex() } catch { }
 $script:singleInstanceMutex.Dispose()
