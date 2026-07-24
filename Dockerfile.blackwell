@@ -69,7 +69,8 @@ COPY . .
 COPY docker/blackwell-entrypoint.sh /usr/local/bin/dfl-python
 RUN chmod +x /usr/local/bin/dfl-python \
     && python -m compileall -q core facelib mainscripts merger models samplelib \
-        tests blackwell_support.py dfl_ai_assistant.py main.py verify_rtx5090.py \
+        tests blackwell_support.py dfl_ai_assistant.py dfl_pipeline.py main.py \
+        verify_rtx5090.py \
         verify_tensorflow_build.py verify_blackwell_training.py \
     && /usr/local/bin/dfl-python verify_tensorflow_build.py
 

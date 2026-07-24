@@ -211,9 +211,15 @@ class InteractBase(object):
         return ar
 
     def input(self, s):
+        if os.environ.get("DFL_NON_INTERACTIVE", "0") == "1":
+            self.log_info(f"{s}[non-interactive]")
+            return ""
         return input(s)
 
     def input_number(self, s, default_value, valid_list=None, show_default_value=True, add_info=None, help_message=None):
+        if os.environ.get("DFL_NON_INTERACTIVE", "0") == "1":
+            self.log_info(f"{s}: {default_value}")
+            return default_value
         if show_default_value and default_value is not None:
             s = f"[{default_value}] {s}"
 
@@ -257,6 +263,9 @@ class InteractBase(object):
         return result
 
     def input_int(self, s, default_value, valid_range=None, valid_list=None, add_info=None, show_default_value=True, help_message=None):
+        if os.environ.get("DFL_NON_INTERACTIVE", "0") == "1":
+            self.log_info(f"{s}: {default_value}")
+            return default_value
         if show_default_value:
             if len(s) != 0:
                 s = f"[{default_value}] {s}"
@@ -310,6 +319,9 @@ class InteractBase(object):
         return result
 
     def input_bool(self, s, default_value, help_message=None):
+        if os.environ.get("DFL_NON_INTERACTIVE", "0") == "1":
+            self.log_info(f"{s}: {'y' if default_value else 'n'}")
+            return default_value
         s = f"[{yn_str[default_value]}] {s} ( y/n"
 
         if help_message is not None:
@@ -332,6 +344,9 @@ class InteractBase(object):
                 return default_value
 
     def input_str(self, s, default_value=None, valid_list=None, show_default_value=True, help_message=None):
+        if os.environ.get("DFL_NON_INTERACTIVE", "0") == "1":
+            self.log_info(f"{s}: {'' if default_value is None else default_value}")
+            return default_value
         if show_default_value and default_value is not None:
             s = f"[{default_value}] {s}"
 
@@ -394,6 +409,8 @@ class InteractBase(object):
             sq.put (False)
 
     def input_in_time (self, str, max_time_sec):
+        if os.environ.get("DFL_NON_INTERACTIVE", "0") == "1":
+            return False
         sq = multiprocessing.Queue()
         p = multiprocessing.Process(target=self.input_process, args=( sys.stdin.fileno(), sq, str))
         p.daemon = True
@@ -426,6 +443,8 @@ class InteractBase(object):
                 pass
 
     def input_skip_pending(self):
+        if os.environ.get("DFL_NON_INTERACTIVE", "0") == "1":
+            return
         if is_colab:
             # currently it does not work on Colab
             return

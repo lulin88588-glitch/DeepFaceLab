@@ -151,6 +151,7 @@ interaction use the proven native Windows tools.
 | Blackwell container | RTX 50-series training, extraction, XSeg processing, enhancement, and video jobs |
 | Training Console | Model selection, start/stop, GPU telemetry, logs, environment tools, and preview control |
 | Workflow Workbench | Material, SRC, DST, XSeg, training/export, and merge/output operations |
+| One-click DFM Pipeline | Recoverable media-to-DFM workflow with quality screening, two-phase training, export, and validation |
 | Local AI Assistant | Read-only material quality checks, training diagnosis, and RTX 5090-aware configuration guidance |
 | Native interactive runtime | Manual face extraction, XSeg editor, sorting prompts, DFM export, and interactive merger |
 | Windows preview window | Periodically refreshed training preview without relying on a WSLg copy-mode window |
@@ -198,6 +199,60 @@ instances.
 5. Use **Open Workbench** for the complete material-to-output workflow.
 
 6. Use **AI Assistant** from either window for local diagnostics and guidance.
+
+7. Use **One-click DFM Training** for a guided project that ends with a
+   validated DeepFaceLive model.
+
+### One-click DFM training
+
+Double-click `DeepFaceLab-OneClick.cmd`, or open **One-click DFM Training**
+from the Training Console. Select a project directory and choose
+**Create / Check Project**. The pipeline creates this recoverable layout:
+
+```text
+dfm-project/
+|-- input_src/             # Identity that the DFM should render
+|-- input_dst/             # DeepFaceLive driver/target face material
+|-- data_src/
+|   `-- aligned/
+|-- data_dst/
+|   `-- aligned/
+|-- model/
+|-- output/                # Final <model-name>.dfm
+`-- .dfl-pipeline/
+    |-- state.json         # Resume state and selected settings
+    |-- rejected/          # Recoverable quality-screening quarantine
+    |-- model-backups/     # Model metadata backup before refinement
+    `-- dfm-report.json    # Size, SHA-256 and ONNX I/O validation
+```
+
+Place photos and videos in both input folders, then choose **Prepare and Start
+Training**. The standard workflow is:
+
+1. Import still images and sample video frames at the selected FPS.
+2. Detect with S3FD and align 512-pixel whole-face crops.
+3. Conservatively quarantine unreadable, severely exposed, blurry, and
+   perceptually duplicate faces. Files are moved, never deleted.
+4. Optionally enhance SRC and/or DST faces.
+5. Apply the bundled generic whole-face XSeg masks.
+6. Create a reproducible RTX 5090 SAEHD profile.
+7. Run a generalization phase with random warp and GAN disabled.
+8. Back up model metadata, then refine with LR dropout, random warp disabled,
+   gradient clipping, and low-strength GAN.
+9. Save, export the named model as DFM, validate the ONNX graph, and publish it
+   to `output/`.
+
+The default deployment-oriented profile is 256 pixels, `df-ud`, AE 320,
+encoder/decoder 64/64, batch 8, with base and final targets of 300,000 and
+500,000 iterations. It balances source identity detail with a DFM size and
+runtime suitable for DeepFaceLive; larger networks are not automatically
+treated as higher quality.
+
+**Safe Pause** waits for the current preprocessing stage to finish. During
+training it sends SIGINT so DeepFaceLab saves before stopping. Starting again
+uses `.dfl-pipeline/state.json` to continue completed stages. Automatic
+screening is intentionally conservative: inspect the quarantine before a long
+run, especially when either faceset is small.
 
 ### Local AI assistant
 

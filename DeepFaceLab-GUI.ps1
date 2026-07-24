@@ -20,6 +20,8 @@ $T = @'
   "cpu": "\u4ec5 CPU \u6a21\u5f0f",
   "workflow": "\u6253\u5f00\u5de5\u4f5c\u53f0",
   "workbenchTitle": "DeepFaceLab \u5de5\u4f5c\u53f0",
+  "oneClick": "\u4e00\u952e DFM \u8bad\u7ec3",
+  "oneClickTitle": "DeepFaceLab DFM \u4e00\u952e\u8bad\u7ec3",
   "aiAssistant": "AI \u52a9\u624b",
   "aiTitle": "DeepFaceLab AI \u52a9\u624b",
   "start": "\u5f00\u59cb\u8bad\u7ec3",
@@ -389,9 +391,15 @@ $configPanel.Controls.Add($showPreviewButton)
 
 $workflowButton = New-Object Windows.Forms.Button
 $workflowButton.Text = $T.workflow
-$workflowButton.SetBounds(20, 342, 350, 42)
-Style-Button $workflowButton $accent
+$workflowButton.SetBounds(190, 342, 180, 42)
+Style-Button $workflowButton $surfaceRaised
 $configPanel.Controls.Add($workflowButton)
+
+$oneClickButton = New-Object Windows.Forms.Button
+$oneClickButton.Text = $T.oneClick
+$oneClickButton.SetBounds(20, 342, 160, 42)
+Style-Button $oneClickButton $accent
+$configPanel.Controls.Add($oneClickButton)
 
 $toolsLabel = Add-Label $configPanel $T.tools 20 400 350
 $toolsLabel.Font = New-Object Drawing.Font('Microsoft YaHei UI', 9, [Drawing.FontStyle]::Bold)
@@ -534,6 +542,7 @@ function Set-Busy([bool] $Busy) {
     $previewCheck.Enabled = $canConfigure
     $silentCheck.Enabled = $canConfigure
     $workflowButton.Enabled = -not $Busy
+    $oneClickButton.Enabled = -not $Busy
     $showPreviewButton.Enabled = $script:training
 }
 
@@ -609,6 +618,29 @@ $workflowButton.Add_Click({
                          ' -LegacyRoot ' + (Quote-Arg 'D:\DFL_RTX5000_series_2025')
             Start-Process -FilePath 'powershell.exe' -ArgumentList $arguments `
                 -WorkingDirectory $repoRoot -WindowStyle Hidden | Out-Null
+        }
+    }
+})
+
+$oneClickButton.Add_Click({
+    $oneClick = Get-Process -Name powershell -ErrorAction SilentlyContinue |
+        Where-Object { $_.MainWindowTitle -eq $T.oneClickTitle } |
+        Select-Object -First 1
+    if ($null -ne $oneClick) {
+        [DflGui.WindowTools]::ShowWindow($oneClick.MainWindowHandle, 9) | Out-Null
+        [DflGui.WindowTools]::SetForegroundWindow(
+            $oneClick.MainWindowHandle) | Out-Null
+    }
+    else {
+        $oneClickScript = Join-Path $repoRoot 'DeepFaceLab-OneClick.ps1'
+        if (Test-Path -LiteralPath $oneClickScript) {
+            $arguments = '-NoLogo -NoProfile -STA -ExecutionPolicy Bypass -File ' +
+                         (Quote-Arg $oneClickScript) +
+                         ' -Project ' + (Quote-Arg $workspaceBox.Text) +
+                         ' -LegacyRoot ' +
+                         (Quote-Arg 'D:\DFL_RTX5000_series_2025')
+            Start-Process -FilePath 'powershell.exe' -ArgumentList $arguments `
+                -WorkingDirectory $repoRoot -WindowStyle Normal | Out-Null
         }
     }
 })
