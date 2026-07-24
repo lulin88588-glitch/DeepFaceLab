@@ -23,6 +23,7 @@ $T = @'
   "oneClick": "\u4e00\u952e DFM \u8bad\u7ec3",
   "oneClickTitle": "DeepFaceLab DFM \u4e00\u952e\u8bad\u7ec3",
   "aiAssistant": "AI \u667a\u80fd\u4e2d\u5fc3",
+  "aiLaunch": "AI \u4e00\u952e\u5206\u6790",
   "aiTitle": "DeepFaceLab AI \u52a9\u624b",
   "logTab": "\u8bad\u7ec3\u65e5\u5fd7",
   "aiPrivacy": "\u672c\u5730 AI \u00b7 \u7d20\u6750\u4e0d\u4e0a\u4e91 \u00b7 \u5efa\u8bae\u53ef\u4e00\u952e\u5e94\u7528",
@@ -496,7 +497,7 @@ Style-Button $logTabButton $surfaceRaised
 $logPanel.Controls.Add($logTabButton)
 
 $aiButton = New-Object Windows.Forms.Button
-$aiButton.Text = $T.aiAssistant
+$aiButton.Text = $T.aiLaunch
 $aiButton.SetBounds(690, 12, 120, 34)
 $aiButton.Anchor = 'Top,Right'
 Style-Button $aiButton $accent
@@ -1101,7 +1102,10 @@ $oneClickButton.Add_Click({
 })
 
 $logTabButton.Add_Click({ Show-AiView $false })
-$aiButton.Add_Click({ Show-AiView $true })
+$aiButton.Add_Click({
+    Show-AiView $true
+    Start-AiAnalysis 'recommend'
+})
 foreach ($button in @(
     $aiWorkspaceButton, $aiTrainingButton, $aiRecommendButton
 )) {

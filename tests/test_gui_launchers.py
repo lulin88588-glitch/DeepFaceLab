@@ -68,6 +68,7 @@ class HiddenGuiLauncherTest(unittest.TestCase):
             "$aiPanel.Visible = $true",
             "function Start-AiAnalysis",
             "function Apply-AiRecommendation",
+            "Start-AiAnalysis 'recommend'",
             "dfl_ai_assistant.py",
             "dfl_pipeline.py",
             "DFL_AI_JSON_BEGIN",

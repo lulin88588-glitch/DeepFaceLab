@@ -266,6 +266,8 @@ run, especially when either faceset is small.
 The Training Console opens directly on its embedded **AI Center**. It provides
 four connected actions:
 
+- The header **AI One-click Analysis** action opens the AI Center and immediately
+  runs the material-aware RTX 5090 recommendation flow.
 - **Check Current Workspace** samples SRC and DST aligned faces, including
   `faceset.pak`, and reports image count, resolution, sharpness, exposure,
   likely duplicates, and dataset balance.
