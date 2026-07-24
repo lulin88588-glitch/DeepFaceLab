@@ -58,6 +58,16 @@ $T = @'
 }
 '@ | ConvertFrom-Json
 
+$singleInstanceCreated = $false
+$script:singleInstanceMutex = [Threading.Mutex]::new(
+    $true, 'Local\DeepFaceLabTrainingConsole', [ref]$singleInstanceCreated)
+if (-not $singleInstanceCreated) {
+    $windowShell = New-Object -ComObject WScript.Shell
+    [void]$windowShell.AppActivate([string]$T.title)
+    $script:singleInstanceMutex.Dispose()
+    exit 0
+}
+
 Add-Type -TypeDefinition @'
 using System;
 using System.Collections.Concurrent;
@@ -874,3 +884,5 @@ $oldPreviewImage = $previewPicture.Image
 if ($null -ne $oldPreviewImage) { $oldPreviewImage.Dispose() }
 $previewForm.Dispose()
 $form.Dispose()
+try { $script:singleInstanceMutex.ReleaseMutex() } catch { }
+$script:singleInstanceMutex.Dispose()

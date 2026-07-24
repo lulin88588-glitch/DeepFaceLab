@@ -25,6 +25,19 @@ class HiddenGuiLauncherTest(unittest.TestCase):
             self.assertIn(f"{stem.lower()}.vbs", launcher)
             self.assertNotIn("powershell.exe", launcher)
 
+    def test_primary_windows_have_single_instance_mutexes(self):
+        expected = {
+            "DeepFaceLab-GUI.ps1": "Local\\DeepFaceLabTrainingConsole",
+            "DeepFaceLab-OneClick.ps1": "Local\\DeepFaceLabOneClickGui",
+        }
+        for relative_path, mutex_name in expected.items():
+            source = (self.repo_root / relative_path).read_text(
+                encoding="utf-8"
+            )
+            self.assertIn(mutex_name, source)
+            self.assertIn("AppActivate", source)
+            self.assertIn("ReleaseMutex", source)
+
 
 if __name__ == "__main__":
     unittest.main()

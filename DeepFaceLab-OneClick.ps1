@@ -60,6 +60,16 @@ $T = @'
 }
 '@ | ConvertFrom-Json
 
+$singleInstanceCreated = $false
+$script:singleInstanceMutex = [Threading.Mutex]::new(
+    $true, 'Local\DeepFaceLabOneClickGui', [ref]$singleInstanceCreated)
+if (-not $singleInstanceCreated) {
+    $windowShell = New-Object -ComObject WScript.Shell
+    [void]$windowShell.AppActivate([string]$T.title)
+    $script:singleInstanceMutex.Dispose()
+    exit 0
+}
+
 $Stages = @'
 [
   {"id":"project","title":"01 \u9879\u76ee\u68c0\u67e5","desc":"\u521b\u5efa\u6807\u51c6\u76ee\u5f55\u5e76\u4fdd\u5b58\u8fdb\u5ea6"},
@@ -1232,3 +1242,5 @@ $timer.Start()
 [void]$form.ShowDialog()
 $timer.Dispose()
 $form.Dispose()
+try { $script:singleInstanceMutex.ReleaseMutex() } catch { }
+$script:singleInstanceMutex.Dispose()
